@@ -12,6 +12,8 @@ use crate::graph_data::GraphData;
 use crate::vertex_data::VertexData;
 
 const ADD_VERTEX_SELECTOR: Selector<f64> = Selector::<f64>::new("add_vertex");
+pub const ADD_EDGE: Selector<(usize, &'static str, Point)> =
+    Selector::<(usize, &'static str, Point)>::new("begin_edge");
 
 struct Vertex {
     widget: WidgetPod<VertexData, Box<dyn Widget<VertexData>>>,
@@ -31,11 +33,15 @@ impl Vertex {
 
 pub struct GraphWidget {
     vertices: Vec<Vertex>,
+    // maybe replace edges with their own widgets so that they can be selected and stuff.
+    edges: Vec<(Point, Point)>, 
     // use this var to decide what order to process vertices.
     // default state should be [0, 1, 2, 3, ..., (len(vertices) - 1)]
     // when a vertex is focused, move it's index to the back of the vector
     vertex_render_order: Vec<usize>,
     translating_vertices: bool,
+    creating_new_edge: bool,
+    current_edge_end: Option<(usize, &'static str, Point)>,
     last_mouse_pos: Point,
 }
 
@@ -43,8 +49,11 @@ impl GraphWidget {
     pub fn new() -> Self {
         GraphWidget {
             vertices: Vec::new(),
+            edges: Vec::new(),
             vertex_render_order: Vec::new(),
             translating_vertices: false,
+            creating_new_edge: false,
+            current_edge_end: None,
             last_mouse_pos: Point::ZERO,
         }
     }
@@ -131,6 +140,35 @@ impl Widget<GraphData> for GraphWidget {
                         Target::Widget(widget_id),
                     ));
 
+                    ctx.set_handled();
+                } else if notification.is(ADD_EDGE) {
+                    if let Some(edge_end) = notification.get(ADD_EDGE) {
+                        match self.current_edge_end {
+                            Some(first_edge_end) => {
+                                if first_edge_end.0 != edge_end.0 {
+                                    // The graphdata should probable handle this? Or (more likely?) a delegate
+                                    // Both need to say yes this is okay.
+                                    // Need to check if the edge already exists.
+                                    data.get_edges_mut().push_back((
+                                        first_edge_end.0,
+                                        first_edge_end.1,
+                                        edge_end.0,
+                                        edge_end.1,
+                                    ));
+                                    let p0 = (first_edge_end.2 - self.vertices.get(first_edge_end.0).unwrap().position).to_point();
+                                    let p1 = (edge_end.2 - self.vertices.get(edge_end.0).unwrap().position).to_point();
+                                    self.edges.push((p0, p1))
+                                }
+                                self.creating_new_edge = false;
+                                self.current_edge_end = None;
+                                ctx.request_paint();
+                            }
+                            None => {
+                                self.creating_new_edge = true;
+                                self.current_edge_end = Some(edge_end.clone());
+                            }
+                        }
+                    }
                     ctx.set_handled();
                 }
             }
@@ -276,6 +314,17 @@ impl Widget<GraphData> for GraphWidget {
             p1,
         );
         ctx.stroke(path, &Color::rgb8(100, 100, 100), 2.0);
+
+        for edge in &self.edges {
+            let p0 = edge.0 self.vertices.get(1).unwrap().position;
+            let mut path = BezPath::new();
+            path.move_to(*p0);
+            path.quad_to(
+                Point::lerp(*p0, *p1, 0.5).add((0., 1. * ((*p0 - *p1).hypot() + 1.).log(1.1))),
+                *p1,
+            );
+            ctx.stroke(path, &Color::rgb8(100, 100, 100), 2.0);
+        }
 
         for vertex_index in &self.vertex_render_order {
             let vertex = self.vertices.get_mut(*vertex_index).unwrap();
