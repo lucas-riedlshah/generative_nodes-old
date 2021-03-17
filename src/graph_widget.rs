@@ -11,7 +11,8 @@ use druid::{
 use crate::graph_data::GraphData;
 use crate::vertex_data::VertexData;
 
-const ADD_VERTEX_SELECTOR: Selector<f64> = Selector::<f64>::new("add_vertex");
+// These will need to be moved to a delegate when GraphWidget is no longer the root of the application.
+const ADD_VERTEX: Selector<f64> = Selector::<f64>::new("add_vertex");
 pub const ADD_EDGE: Selector<(usize, &'static str, Point)> =
     Selector::<(usize, &'static str, Point)>::new("begin_edge");
 
@@ -103,8 +104,8 @@ impl Widget<GraphData> for GraphWidget {
         // });
 
         match event {
-            Event::Command(command) if command.is(ADD_VERTEX_SELECTOR) => {
-                println!("{}", command.get(ADD_VERTEX_SELECTOR).unwrap());
+            Event::Command(command) if command.is(ADD_VERTEX) => {
+                println!("{}", command.get(ADD_VERTEX).unwrap());
             }
             Event::Notification(notification) => {
                 if notification.is(Selector::<MouseEvent>::new("vertex_clicked")) {
@@ -199,11 +200,7 @@ impl Widget<GraphData> for GraphWidget {
                         MenuDesc::<GraphData>::new(LocalizedString::new("Add vertex")).append(
                             MenuItem::new(
                                 LocalizedString::new("Vertex Type 1"),
-                                Command::new(
-                                    ADD_VERTEX_SELECTOR,
-                                    69.,
-                                    Target::Widget(ctx.widget_id()),
-                                ),
+                                Command::new(ADD_VERTEX, 69., Target::Widget(ctx.widget_id())),
                             ),
                         ),
                         mouse.pos,
