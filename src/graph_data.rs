@@ -8,7 +8,7 @@ use crate::vertex_data::VertexData;
 #[derive(Clone)]
 pub struct GraphData {
   vertices: Vector<VertexData>,
-  edges: Vector<(usize, usize)>,
+  edges: Vector<(usize, &'static str, usize, &'static str)>,
   factories: HashMap<&'static str, fn() -> VertexData>,
 }
 
@@ -31,7 +31,7 @@ impl GraphData {
     &self.vertices
   }
 
-  pub fn get_edges(&self) -> &Vector<(usize, usize)> {
+  pub fn get_edges(&self) -> &Vector<(usize, &'static str, usize, &'static str)> {
     &self.edges
   }
 
@@ -39,7 +39,7 @@ impl GraphData {
     &mut self.vertices
   }
 
-  pub fn get_edges_mut(&mut self) -> &mut Vector<(usize, usize)> {
+  pub fn get_edges_mut(&mut self) -> &mut Vector<(usize, &'static str, usize, &'static str)> {
     &mut self.edges
   }
 }
