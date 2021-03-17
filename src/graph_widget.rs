@@ -2,10 +2,9 @@ use std::cmp::Ordering;
 use std::ops::Add;
 
 use druid::{
-    kurbo::BezPath, widget::ListIter, BoxConstraints, Color, Command, ContextMenu, Env, Event,
-    EventCtx, LayoutCtx, LifeCycle, LifeCycleCtx, LocalizedString, MenuDesc, MenuItem,
-    MouseEvent, PaintCtx, Point, RenderContext, Selector, Size, Target, UpdateCtx, Widget,
-    WidgetPod,
+    kurbo::QuadBez, widget::ListIter, BoxConstraints, Color, Command, ContextMenu, Env, Event,
+    EventCtx, LayoutCtx, LifeCycle, LifeCycleCtx, LocalizedString, MenuDesc, MenuItem, MouseEvent,
+    PaintCtx, Point, RenderContext, Selector, Size, Target, UpdateCtx, Widget, WidgetPod,
 };
 
 use crate::graph_data::GraphData;
@@ -35,7 +34,7 @@ impl Vertex {
 pub struct GraphWidget {
     vertices: Vec<Vertex>,
     // maybe replace edges with their own widgets so that they can be selected and stuff.
-    edges: Vec<(Point, Point)>, 
+    edges: Vec<(Point, Point)>,
     // use this var to decide what order to process vertices.
     // default state should be [0, 1, 2, 3, ..., (len(vertices) - 1)]
     // when a vertex is focused, move it's index to the back of the vector
@@ -156,8 +155,13 @@ impl Widget<GraphData> for GraphWidget {
                                         edge_end.0,
                                         edge_end.1,
                                     ));
-                                    let p0 = (first_edge_end.2 - self.vertices.get(first_edge_end.0).unwrap().position).to_point();
-                                    let p1 = (edge_end.2 - self.vertices.get(edge_end.0).unwrap().position).to_point();
+                                    // may need to also subtract graph widget position of this later if graph widget ends up not being the root widget.
+                                    let p0 = (first_edge_end.2
+                                        - self.vertices.get(first_edge_end.0).unwrap().position)
+                                        .to_point();
+                                    let p1 = (edge_end.2
+                                        - self.vertices.get(edge_end.0).unwrap().position)
+                                        .to_point();
                                     self.edges.push((p0, p1))
                                 }
                                 self.creating_new_edge = false;
@@ -302,23 +306,27 @@ impl Widget<GraphData> for GraphWidget {
         let clip_rect = ctx.size().to_rect();
         ctx.fill(clip_rect, &Color::rgb8(15, 15, 15));
 
-        let p0 = self.vertices.get(0).unwrap().position.add((200., 150.));
-        let p1 = self.vertices.get(1).unwrap().position.add((0., 150.));
-        let mut path = BezPath::new();
-        path.move_to(p0);
-        path.quad_to(
-            Point::lerp(p0, p1, 0.5).add((0., 1. * ((p0 - p1).hypot() + 1.).log(1.1))),
-            p1,
-        );
-        ctx.stroke(path, &Color::rgb8(100, 100, 100), 2.0);
-
-        for edge in &self.edges {
-            let p0 = edge.0 self.vertices.get(1).unwrap().position;
-            let mut path = BezPath::new();
-            path.move_to(*p0);
-            path.quad_to(
-                Point::lerp(*p0, *p1, 0.5).add((0., 1. * ((*p0 - *p1).hypot() + 1.).log(1.1))),
-                *p1,
+        for ((start_relative, end_relative), (start_vertex_index, _, end_vertex_index, _)) in
+            self.edges.iter().zip(data.get_edges())
+        {
+            let start = *start_relative
+                + self
+                    .vertices
+                    .get(*start_vertex_index)
+                    .unwrap()
+                    .position
+                    .to_vec2();
+            let end = *end_relative
+                + self
+                    .vertices
+                    .get(*end_vertex_index)
+                    .unwrap()
+                    .position
+                    .to_vec2();
+            let path = QuadBez::new(
+                start,
+                Point::lerp(start, end, 0.5).add((0., 1. * ((start - end).hypot() + 1.).log(1.1))),
+                end,
             );
             ctx.stroke(path, &Color::rgb8(100, 100, 100), 2.0);
         }
