@@ -13,6 +13,7 @@ pub enum Packet {
 pub struct VertexData {
     inputs: Arc<HashMap<&'static str, Packet>>,
     outputs: Arc<HashMap<&'static str, Packet>>,
+    id: usize,
     generate_widget: fn(data: &VertexData) -> Box<dyn Widget<VertexData>>,
 }
 
@@ -20,13 +21,19 @@ impl VertexData {
     pub fn new(
         inputs: HashMap<&'static str, Packet>,
         outputs: HashMap<&'static str, Packet>,
+        id: usize,
         generate_widget: fn(data: &VertexData) -> Box<dyn Widget<VertexData>>,
     ) -> Self {
         VertexData {
             inputs: Arc::new(inputs),
             outputs: Arc::new(outputs),
+            id,
             generate_widget,
         }
+    }
+
+    pub fn id(&self) -> usize {
+        self.id.clone()
     }
     pub fn generate_widget(&self) -> Box<dyn Widget<VertexData>> {
         (self.generate_widget)(&self)
