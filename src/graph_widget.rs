@@ -3,7 +3,7 @@ use std::ops::Add;
 
 use druid::{
     kurbo::BezPath, widget::ListIter, BoxConstraints, Color, Command, ContextMenu, Env, Event,
-    EventCtx, LayoutCtx, LifeCycle, LifeCycleCtx, LocalizedString, Location, MenuDesc, MenuItem,
+    EventCtx, LayoutCtx, LifeCycle, LifeCycleCtx, LocalizedString, MenuDesc, MenuItem,
     MouseEvent, PaintCtx, Point, RenderContext, Selector, Size, Target, UpdateCtx, Widget,
     WidgetPod,
 };
