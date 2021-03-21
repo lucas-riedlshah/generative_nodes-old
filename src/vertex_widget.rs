@@ -1,11 +1,15 @@
 use druid::{
-    widget::Container, BoxConstraints, Color, Command, Data, Env, Event, EventCtx, LayoutCtx,
+    BoxConstraints, Color, Command, Data, Env, Event, EventCtx, LayoutCtx,
     LifeCycle, LifeCycleCtx, PaintCtx, Point, RenderContext, Selector, Size, Target, UpdateCtx,
     Widget, WidgetExt, WidgetPod,
 };
 
+// Need to investigate ways to totally remove this widget as I don't think it's actually needed.
+// Moving is_selected to the app state would make sense. The graph can just store a closure for how to modify the state then when a vertex is selected.
+
 pub struct VertexWidget<T> {
     inner: WidgetPod<T, Box<dyn Widget<T>>>,
+    // Might be worth moving this out to the app state.
     is_selected: bool,
 }
 
@@ -58,21 +62,17 @@ impl<T: Data> Widget<T> for VertexWidget<T> {
     }
 
     fn layout(&mut self, ctx: &mut LayoutCtx, _bc: &BoxConstraints, data: &T, env: &Env) -> Size {
+        // sort out removing these set values so that the vertex's inner will totally decide it's own size.
         let width = 200.;
         let height = 300.;
-        let padding = 5.;
-        self.inner.layout(
+        let size = self.inner.layout(
             ctx,
-            &BoxConstraints::new(
-                Size::ZERO,
-                Size::new(width - padding * 2., height - padding * 2.),
-            ),
+            &BoxConstraints::new(Size::ZERO, Size::new(width, height)),
             data,
             env,
         );
-        self.inner
-            .set_origin(ctx, data, env, Point::new(padding, padding));
-        Size::new(width, height)
+        self.inner.set_origin(ctx, data, env, Point::ZERO);
+        size
     }
 
     fn paint(&mut self, ctx: &mut PaintCtx, data: &T, env: &Env) {
