@@ -2,30 +2,29 @@ use std::ops::Add;
 
 use druid::{kurbo::Circle, widget::prelude::*, Color, Command, Point, Target};
 
-use crate::graph_widget::ADD_EDGE;
+use crate::graph_widget::{ADD_EDGE, Port};
 
 const RADIUS: f64 = 5.;
 
 pub struct PortWidget {
-    vertex_id: usize,
-    port_name: &'static str,
+    port: Port,
 }
 
 impl PortWidget {
-    pub fn new(vertex_id: usize, port_name: &'static str) -> PortWidget {
+    pub fn new(port: Port) -> PortWidget {
         PortWidget {
-            vertex_id,
-            port_name,
+            port
         }
     }
 }
+
 
 impl<T> Widget<T> for PortWidget {
     fn event(&mut self, ctx: &mut EventCtx, event: &Event, _data: &mut T, _env: &Env) {
         match event {
             Event::MouseUp(_mouse) => ctx.submit_notification(Command::new(
                 ADD_EDGE,
-                (self.vertex_id, self.port_name, ctx.window_origin().add((RADIUS, RADIUS))),
+                (self.port, ctx.window_origin().add((RADIUS, RADIUS))),
                 Target::Auto,
             )),
             _ => (),

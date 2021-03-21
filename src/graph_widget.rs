@@ -12,8 +12,31 @@ use crate::vertex_data::VertexData;
 
 // These will need to be moved to a delegate when GraphWidget is no longer the root of the application.
 const ADD_VERTEX: Selector<f64> = Selector::<f64>::new("add_vertex");
-pub const ADD_EDGE: Selector<(usize, &'static str, Point)> =
-    Selector::<(usize, &'static str, Point)>::new("begin_edge");
+pub const ADD_EDGE: Selector<(Port, Point)> =
+    Selector::<(Port, Point)>::new("begin_edge");
+
+#[derive(PartialEq, Copy, Clone)]
+pub enum Direction {
+    Input,
+    Output,
+}
+
+#[derive(PartialEq, Copy, Clone)]
+pub struct Port {
+    vertex_id: usize,
+    port_name: &'static str,
+    direction: Direction,
+}
+
+impl Port {
+    pub fn new(vertex_id: usize, port_name: &'static str, direction: Direction) -> Port {
+        Port {
+            vertex_id,
+            port_name,
+            direction
+        }
+    }
+}
 
 struct Vertex {
     widget: WidgetPod<VertexData, Box<dyn Widget<VertexData>>>,
@@ -41,7 +64,7 @@ pub struct GraphWidget {
     vertex_render_order: Vec<usize>,
     translating_vertices: bool,
     creating_new_edge: bool,
-    current_edge_end: Option<(usize, &'static str, Point)>,
+    current_edge_end: Option<(Port, Point)>,
     last_mouse_pos: Point,
 }
 
@@ -150,17 +173,17 @@ impl Widget<GraphData> for GraphWidget {
                                     // Both need to say yes this is okay.
                                     // Need to check if the edge already exists.
                                     data.get_edges_mut().push_back((
-                                        first_edge_end.0,
-                                        first_edge_end.1,
-                                        edge_end.0,
-                                        edge_end.1,
+                                        first_edge_end.0.vertex_id,
+                                        first_edge_end.0.port_name,
+                                        edge_end.0.vertex_id,
+                                        edge_end.0.port_name,
                                     ));
                                     // may need to also subtract graph widget position of this later if graph widget ends up not being the root widget.
-                                    let p0 = (first_edge_end.2
-                                        - self.vertices.get(first_edge_end.0).unwrap().position)
+                                    let p0 = (first_edge_end.1
+                                        - self.vertices.get(first_edge_end.0.vertex_id).unwrap().position)
                                         .to_point();
-                                    let p1 = (edge_end.2
-                                        - self.vertices.get(edge_end.0).unwrap().position)
+                                    let p1 = (edge_end.1
+                                        - self.vertices.get(edge_end.0.vertex_id).unwrap().position)
                                         .to_point();
                                     self.edges.push((p0, p1))
                                 }
@@ -325,6 +348,7 @@ impl Widget<GraphData> for GraphWidget {
                     .to_vec2();
             let path = QuadBez::new(
                 start,
+                // need to figure out a cheaper way to droop the cables. Or maybe not?
                 Point::lerp(start, end, 0.5).add((0., 1. * ((start - end).hypot() + 1.).log(1.1))),
                 end,
             );
