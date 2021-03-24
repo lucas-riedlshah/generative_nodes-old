@@ -1,5 +1,4 @@
-use std::ops::Add;
-use std::{cmp::Ordering, usize};
+use std::{cmp::Ordering, ops::Add, time::Instant};
 
 use druid::{
     kurbo::QuadBez, widget::ListIter, BoxConstraints, Color, Command, ContextMenu, Env, Event,
@@ -57,14 +56,12 @@ pub struct GraphWidget {
     vertices: Vec<Vertex>,
     // maybe replace edges with their own widgets so that they can be selected and stuff.
     edges: Vec<(Point, Point)>,
-    // use this var to decide what order to process vertices.
-    // default state should be [0, 1, 2, 3, ..., (len(vertices) - 1)]
-    // when a vertex is focused, move it's index to the back of the vector
     vertex_render_order: Vec<usize>,
-    translating_vertices: bool,
+    is_translating_vertices: bool,
     creating_new_edge: bool,
     current_edge_end: Option<(Port, Point)>,
     last_mouse_pos: Point,
+    last_layout_instant: Instant,
 }
 
 impl GraphWidget {
@@ -73,10 +70,11 @@ impl GraphWidget {
             vertices: Vec::new(),
             edges: Vec::new(),
             vertex_render_order: Vec::new(),
-            translating_vertices: false,
+            is_translating_vertices: false,
             creating_new_edge: false,
             current_edge_end: None,
             last_mouse_pos: Point::ZERO,
+            last_layout_instant: Instant::now(),
         }
     }
 
@@ -216,18 +214,21 @@ impl Widget<GraphData> for GraphWidget {
                             ctx.request_paint();
                         }
 
-                        self.translating_vertices = true;
+                        self.is_translating_vertices = true;
                         self.last_mouse_pos = mouse.pos;
                     } else {
                         self.deselect_all_vertices(ctx);
                         ctx.request_paint();
                     }
                 } else {
-                    self.translating_vertices = false;
+                    self.is_translating_vertices = false;
                 }
             }
             Event::MouseUp(mouse) => {
-                self.translating_vertices = false;
+                if self.is_translating_vertices {
+                    ctx.request_layout();
+                }
+                self.is_translating_vertices = false;
                 if mouse.button.is_right() {
                     ctx.show_context_menu(ContextMenu::new(
                         MenuDesc::<GraphData>::new(LocalizedString::new("Add vertex")).append(
@@ -241,15 +242,17 @@ impl Widget<GraphData> for GraphWidget {
                 }
             }
             Event::MouseMove(mouse) => {
-                if self.translating_vertices {
-                    let delta = (mouse.pos - self.last_mouse_pos).to_point();
+                if self.is_translating_vertices {
+                    let delta = mouse.pos - self.last_mouse_pos;
                     self.vertices.iter_mut().for_each(|vertex| {
                         if vertex.is_selected {
                             vertex.position += (delta.x, delta.y);
                         }
                     });
                     self.last_mouse_pos = mouse.pos;
-                    ctx.request_layout();
+                    if self.last_layout_instant.elapsed().as_millis() > 16 {
+                        ctx.request_layout();
+                    }
                 }
             }
             _ => (),
@@ -328,6 +331,7 @@ impl Widget<GraphData> for GraphWidget {
         //     };
         // });
 
+        self.last_layout_instant = Instant::now();
         bc.max()
     }
 
@@ -369,7 +373,7 @@ impl Widget<GraphData> for GraphWidget {
                 ctx.stroke(
                     vertex_rect.inflate(5., 5.).to_rounded_rect(10.),
                     &Color::rgb8(200, 50, 150),
-                    3.,
+                    1.,
                 );
             }
             vertex.widget.paint(ctx, vertex_data, env);
