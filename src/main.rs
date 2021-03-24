@@ -69,7 +69,7 @@ fn placeholder_generator_thing(data: &VertexData) -> Box<dyn Widget<VertexData>>
                     .with_range(-10., 10.)
                     .expand_width()
                     .lens(FloatInputLens("float1")),
-            )
+            ),
     ))
 }
 

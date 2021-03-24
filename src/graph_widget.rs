@@ -1,5 +1,5 @@
+use std::cmp::Ordering;
 use std::ops::Add;
-use std::{cmp::Ordering, usize};
 
 use druid::{
     kurbo::QuadBez, widget::ListIter, BoxConstraints, Color, Command, ContextMenu, Env, Event,
@@ -12,7 +12,8 @@ use crate::vertex_data::VertexData;
 
 // These will need to be moved to a delegate when GraphWidget is no longer the root of the application.
 const ADD_VERTEX: Selector<f64> = Selector::<f64>::new("add_vertex");
-pub const ADD_EDGE: Selector<(Port, Point)> = Selector::<(Port, Point)>::new("begin_edge");
+pub const ADD_EDGE: Selector<(Port, Point)> =
+    Selector::<(Port, Point)>::new("begin_edge");
 
 #[derive(PartialEq, Copy, Clone)]
 pub enum Direction {
@@ -32,7 +33,7 @@ impl Port {
         Port {
             vertex_id,
             port_name,
-            direction,
+            direction
         }
     }
 }
@@ -107,17 +108,6 @@ impl GraphWidget {
             ));
         });
     }
-
-    fn find_vertex_at_pos(&self, pos: &Point) -> Option<&usize> {
-        self.vertex_render_order.iter().rev().find(|&&vertex_id| {
-            self.vertices
-                .get(vertex_id)
-                .unwrap()
-                .widget
-                .layout_rect()
-                .contains(*pos)
-        })
-    }
 }
 
 impl Widget<GraphData> for GraphWidget {
@@ -140,7 +130,41 @@ impl Widget<GraphData> for GraphWidget {
                 println!("{}", command.get(ADD_VERTEX).unwrap());
             }
             Event::Notification(notification) => {
-                if notification.is(ADD_EDGE) {
+                if notification.is(Selector::<MouseEvent>::new("vertex_clicked")) {
+                    let mouse = notification
+                        .get(Selector::<MouseEvent>::new("vertex_clicked"))
+                        .unwrap();
+                    let widget_id = notification.source();
+
+                    if !mouse.mods.shift() {
+                        self.deselect_all_vertices(ctx)
+                    };
+
+                    let position = self
+                        .vertices
+                        .iter()
+                        .position(|vertex| vertex.widget.id().eq(&widget_id))
+                        .unwrap();
+
+                    self.vertex_render_order.remove(
+                        self.vertex_render_order
+                            .iter()
+                            .position(|vertex_index| vertex_index == &position)
+                            .unwrap(),
+                    );
+                    self.vertex_render_order.push(position);
+
+                    let vertex = self.vertices.get_mut(position).unwrap();
+
+                    vertex.is_selected = true;
+                    ctx.submit_command(Command::new(
+                        Selector::<bool>::new("update_selected"),
+                        true,
+                        Target::Widget(widget_id),
+                    ));
+
+                    ctx.set_handled();
+                } else if notification.is(ADD_EDGE) {
                     if let Some(edge_end) = notification.get(ADD_EDGE) {
                         match self.current_edge_end {
                             Some(first_edge_end) => {
@@ -156,18 +180,10 @@ impl Widget<GraphData> for GraphWidget {
                                     ));
                                     // may need to also subtract graph widget position of this later if graph widget ends up not being the root widget.
                                     let p0 = (first_edge_end.1
-                                        - self
-                                            .vertices
-                                            .get(first_edge_end.0.vertex_id)
-                                            .unwrap()
-                                            .position)
+                                        - self.vertices.get(first_edge_end.0.vertex_id).unwrap().position)
                                         .to_point();
                                     let p1 = (edge_end.1
-                                        - self
-                                            .vertices
-                                            .get(edge_end.0.vertex_id)
-                                            .unwrap()
-                                            .position)
+                                        - self.vertices.get(edge_end.0.vertex_id).unwrap().position)
                                         .to_point();
                                     self.edges.push((p0, p1))
                                 }
@@ -195,32 +211,10 @@ impl Widget<GraphData> for GraphWidget {
                     }
 
                     if has_active {
-                        if !mouse.mods.shift() {
-                            self.deselect_all_vertices(ctx)
-                        };
-
-                        let vertex_index = self.find_vertex_at_pos(&mouse.pos);
-
-                        if let Some(value) = vertex_index {
-                            let index = value.clone();
-                            let render_order_index = self
-                                .vertex_render_order
-                                .iter()
-                                .position(|vertex_index| vertex_index == &index)
-                                .unwrap();
-                            self.vertex_render_order.remove(render_order_index);
-                            self.vertex_render_order.push(index);
-                            let vertex = self.vertices.get_mut(index).unwrap();
-
-                            vertex.is_selected = true;
-                            ctx.request_paint();
-                        }
-
                         self.translating_vertices = true;
                         self.last_mouse_pos = mouse.pos;
                     } else {
                         self.deselect_all_vertices(ctx);
-                        ctx.request_paint();
                     }
                 } else {
                     self.translating_vertices = false;
@@ -364,14 +358,6 @@ impl Widget<GraphData> for GraphWidget {
         for vertex_index in &self.vertex_render_order {
             let vertex = self.vertices.get_mut(*vertex_index).unwrap();
             let vertex_data = data.get_vertices().get(*vertex_index).unwrap();
-            if vertex.is_selected {
-                let vertex_rect = vertex.widget.layout_rect();
-                ctx.stroke(
-                    vertex_rect.inflate(5., 5.).to_rounded_rect(10.),
-                    &Color::rgb8(200, 50, 150),
-                    3.,
-                );
-            }
             vertex.widget.paint(ctx, vertex_data, env);
         }
 
