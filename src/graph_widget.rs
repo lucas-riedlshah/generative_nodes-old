@@ -7,10 +7,10 @@ use druid::{
 };
 
 use crate::graph_data::GraphData;
-use crate::vertex_data::VertexData;
+use crate::node_data::NodeData;
 
 // These will need to be moved to a delegate when GraphWidget is no longer the root of the application.
-const ADD_VERTEX: Selector<f64> = Selector::<f64>::new("add_vertex");
+const ADD_NODE: Selector<f64> = Selector::<f64>::new("add_node");
 pub const ADD_EDGE: Selector<(Port, Point)> = Selector::<(Port, Point)>::new("begin_edge");
 
 #[derive(PartialEq, Copy, Clone)]
@@ -21,30 +21,30 @@ pub enum Direction {
 
 #[derive(PartialEq, Copy, Clone)]
 pub struct Port {
-    vertex_id: usize,
+    node_id: usize,
     port_name: &'static str,
     direction: Direction,
 }
 
 impl Port {
-    pub fn new(vertex_id: usize, port_name: &'static str, direction: Direction) -> Port {
+    pub fn new(node_id: usize, port_name: &'static str, direction: Direction) -> Port {
         Port {
-            vertex_id,
+            node_id,
             port_name,
             direction,
         }
     }
 }
 
-struct Vertex {
-    widget: WidgetPod<VertexData, Box<dyn Widget<VertexData>>>,
+struct Node {
+    widget: WidgetPod<NodeData, Box<dyn Widget<NodeData>>>,
     position: Point,
     is_selected: bool,
 }
 
-impl Vertex {
-    fn new<W: Widget<VertexData> + 'static>(widget: W) -> Self {
-        Vertex {
+impl Node {
+    fn new<W: Widget<NodeData> + 'static>(widget: W) -> Self {
+        Node {
             widget: WidgetPod::new(Box::new(widget)),
             position: Point::new(5., 5.),
             is_selected: false,
@@ -53,11 +53,11 @@ impl Vertex {
 }
 
 pub struct GraphWidget {
-    vertices: Vec<Vertex>,
+    nodes: Vec<Node>,
     // maybe replace edges with their own widgets so that they can be selected and stuff.
     edges: Vec<(Point, Point)>,
-    vertex_render_order: Vec<usize>,
-    is_translating_vertices: bool,
+    node_render_order: Vec<usize>,
+    is_translating_nodes: bool,
     creating_new_edge: bool,
     current_edge_end: Option<(Port, Point)>,
     last_mouse_pos: Point,
@@ -67,10 +67,10 @@ pub struct GraphWidget {
 impl GraphWidget {
     pub fn new() -> Self {
         GraphWidget {
-            vertices: Vec::new(),
+            nodes: Vec::new(),
             edges: Vec::new(),
-            vertex_render_order: Vec::new(),
-            is_translating_vertices: false,
+            node_render_order: Vec::new(),
+            is_translating_nodes: false,
             creating_new_edge: false,
             current_edge_end: None,
             last_mouse_pos: Point::ZERO,
@@ -80,36 +80,36 @@ impl GraphWidget {
 
     // This might need to be replaced.
     fn update_child_count(&mut self, data: &GraphData, _env: &Env) -> bool {
-        let len = self.vertices.len();
-        match len.cmp(&data.get_vertices().data_len()) {
-            Ordering::Greater => self.vertices.truncate(data.get_vertices().data_len()),
-            Ordering::Less => data.get_vertices().for_each(|vertex_data, i| {
+        let len = self.nodes.len();
+        match len.cmp(&data.get_nodes().data_len()) {
+            Ordering::Greater => self.nodes.truncate(data.get_nodes().data_len()),
+            Ordering::Less => data.get_nodes().for_each(|node_data, i| {
                 if i >= len {
-                    let vertex = Vertex::new(vertex_data.generate_widget());
-                    self.vertex_render_order.push(self.vertices.len());
-                    self.vertices.push(vertex);
+                    let node = Node::new(node_data.generate_widget());
+                    self.node_render_order.push(self.nodes.len());
+                    self.nodes.push(node);
                 }
             }),
             Ordering::Equal => (),
         }
-        len != data.get_vertices().data_len()
+        len != data.get_nodes().data_len()
     }
 
-    fn deselect_all_vertices(&mut self, ctx: &mut EventCtx) {
-        self.vertices.iter_mut().for_each(|vertex| {
-            vertex.is_selected = false;
+    fn deselect_all_nodes(&mut self, ctx: &mut EventCtx) {
+        self.nodes.iter_mut().for_each(|node| {
+            node.is_selected = false;
             ctx.submit_command(Command::new(
                 Selector::<bool>::new("update_selected"),
-                vertex.is_selected.clone(), // does this need to be cloned?
-                Target::Widget(vertex.widget.id()),
+                node.is_selected.clone(), // does this need to be cloned?
+                Target::Widget(node.widget.id()),
             ));
         });
     }
 
-    fn find_vertex_at_pos(&self, pos: &Point) -> Option<&usize> {
-        self.vertex_render_order.iter().rev().find(|&&vertex_id| {
-            self.vertices
-                .get(vertex_id)
+    fn find_node_at_pos(&self, pos: &Point) -> Option<&usize> {
+        self.node_render_order.iter().rev().find(|&&node_id| {
+            self.nodes
+                .get(node_id)
                 .unwrap()
                 .widget
                 .layout_rect()
@@ -120,22 +120,15 @@ impl GraphWidget {
 
 impl Widget<GraphData> for GraphWidget {
     fn event(&mut self, ctx: &mut EventCtx, event: &Event, data: &mut GraphData, env: &Env) {
-        for vertex_index in self.vertex_render_order.iter().rev() {
-            let vertex = self.vertices.get_mut(*vertex_index).unwrap();
-            let vertex_data = data.get_vertices_mut().get_mut(*vertex_index).unwrap();
-            vertex.widget.event(ctx, event, vertex_data, env);
+        for node_index in self.node_render_order.iter().rev() {
+            let node = self.nodes.get_mut(*node_index).unwrap();
+            let node_data = data.get_nodes_mut().get_mut(*node_index).unwrap();
+            node.widget.event(ctx, event, node_data, env);
         }
 
-        // let mut vertices = self.vertices.iter_mut();
-        // data.get_vertices_mut().for_each_mut(|vertex_data, _| {
-        //     if let Some(vertex) = vertices.next() {
-        //         vertex.widget.event(ctx, event, vertex_data, env);
-        //     }
-        // });
-
         match event {
-            Event::Command(command) if command.is(ADD_VERTEX) => {
-                println!("{}", command.get(ADD_VERTEX).unwrap());
+            Event::Command(command) if command.is(ADD_NODE) => {
+                println!("{}", command.get(ADD_NODE).unwrap());
             }
             Event::Notification(notification) => {
                 if notification.is(ADD_EDGE) {
@@ -143,27 +136,26 @@ impl Widget<GraphData> for GraphWidget {
                         match self.current_edge_end {
                             Some(first_edge_end) => {
                                 if first_edge_end.0 != edge_end.0 {
-                                    // The graphdata should probable handle this? Or (more likely?) a delegate
-                                    // Both need to say yes this is okay.
+                                    // Both nodes need to say yes this is okay.
                                     // Need to check if the edge already exists.
                                     data.get_edges_mut().push_back((
-                                        first_edge_end.0.vertex_id,
+                                        first_edge_end.0.node_id,
                                         first_edge_end.0.port_name,
-                                        edge_end.0.vertex_id,
+                                        edge_end.0.node_id,
                                         edge_end.0.port_name,
                                     ));
                                     // may need to also subtract graph widget position of this later if graph widget ends up not being the root widget.
                                     let p0 = (first_edge_end.1
                                         - self
-                                            .vertices
-                                            .get(first_edge_end.0.vertex_id)
+                                            .nodes
+                                            .get(first_edge_end.0.node_id)
                                             .unwrap()
                                             .position)
                                         .to_point();
                                     let p1 = (edge_end.1
                                         - self
-                                            .vertices
-                                            .get(edge_end.0.vertex_id)
+                                            .nodes
+                                            .get(edge_end.0.node_id)
                                             .unwrap()
                                             .position)
                                         .to_point();
@@ -185,8 +177,8 @@ impl Widget<GraphData> for GraphWidget {
             Event::MouseDown(mouse) => {
                 if mouse.button.is_left() {
                     let mut has_active = false;
-                    for vertex in &self.vertices {
-                        if vertex.widget.is_active() {
+                    for node in &self.nodes {
+                        if node.widget.is_active() {
                             has_active = true;
                             break;
                         }
@@ -194,47 +186,47 @@ impl Widget<GraphData> for GraphWidget {
 
                     if has_active {
                         if !mouse.mods.shift() {
-                            self.deselect_all_vertices(ctx)
+                            self.deselect_all_nodes(ctx)
                         };
 
-                        let vertex_index = self.find_vertex_at_pos(&mouse.pos);
+                        let node_index = self.find_node_at_pos(&mouse.pos);
 
-                        if let Some(value) = vertex_index {
+                        if let Some(value) = node_index {
                             let index = value.clone();
                             let render_order_index = self
-                                .vertex_render_order
+                                .node_render_order
                                 .iter()
-                                .position(|vertex_index| vertex_index == &index)
+                                .position(|node_index| node_index == &index)
                                 .unwrap();
-                            self.vertex_render_order.remove(render_order_index);
-                            self.vertex_render_order.push(index);
-                            let vertex = self.vertices.get_mut(index).unwrap();
+                            self.node_render_order.remove(render_order_index);
+                            self.node_render_order.push(index);
+                            let node = self.nodes.get_mut(index).unwrap();
 
-                            vertex.is_selected = true;
+                            node.is_selected = true;
                             ctx.request_paint();
                         }
 
-                        self.is_translating_vertices = true;
+                        self.is_translating_nodes = true;
                         self.last_mouse_pos = mouse.pos;
                     } else {
-                        self.deselect_all_vertices(ctx);
+                        self.deselect_all_nodes(ctx);
                         ctx.request_paint();
                     }
                 } else {
-                    self.is_translating_vertices = false;
+                    self.is_translating_nodes = false;
                 }
             }
             Event::MouseUp(mouse) => {
-                if self.is_translating_vertices {
+                if self.is_translating_nodes {
                     ctx.request_layout();
                 }
-                self.is_translating_vertices = false;
+                self.is_translating_nodes = false;
                 if mouse.button.is_right() {
                     ctx.show_context_menu(ContextMenu::new(
-                        MenuDesc::<GraphData>::new(LocalizedString::new("Add vertex")).append(
+                        MenuDesc::<GraphData>::new(LocalizedString::new("Add node")).append(
                             MenuItem::new(
-                                LocalizedString::new("Vertex Type 1"),
-                                Command::new(ADD_VERTEX, 69., Target::Widget(ctx.widget_id())),
+                                LocalizedString::new("Node Type 1"),
+                                Command::new(ADD_NODE, 69., Target::Widget(ctx.widget_id())),
                             ),
                         ),
                         mouse.pos,
@@ -242,11 +234,11 @@ impl Widget<GraphData> for GraphWidget {
                 }
             }
             Event::MouseMove(mouse) => {
-                if self.is_translating_vertices {
+                if self.is_translating_nodes {
                     let delta = mouse.pos - self.last_mouse_pos;
-                    self.vertices.iter_mut().for_each(|vertex| {
-                        if vertex.is_selected {
-                            vertex.position += (delta.x, delta.y);
+                    self.nodes.iter_mut().for_each(|node| {
+                        if node.is_selected {
+                            node.position += (delta.x, delta.y);
                         }
                     });
                     self.last_mouse_pos = mouse.pos;
@@ -272,31 +264,24 @@ impl Widget<GraphData> for GraphWidget {
             }
         }
 
-        for vertex_index in &self.vertex_render_order {
-            let vertex = self.vertices.get_mut(*vertex_index).unwrap();
-            let vertex_data = data.get_vertices().get(*vertex_index).unwrap();
-            vertex.widget.lifecycle(ctx, event, vertex_data, env);
+        for node_index in &self.node_render_order {
+            let node = self.nodes.get_mut(*node_index).unwrap();
+            let node_data = data.get_nodes().get(*node_index).unwrap();
+            node.widget.lifecycle(ctx, event, node_data, env);
         }
-
-        // let mut vertices = self.vertices.iter_mut();
-        // data.get_vertices().for_each(|vertex_data, _| {
-        //     if let Some(vertex) = vertices.next() {
-        //         vertex.widget.lifecycle(ctx, event, vertex_data, env);
-        //     }
-        // });
     }
 
     fn update(&mut self, ctx: &mut UpdateCtx, _old_data: &GraphData, data: &GraphData, env: &Env) {
-        for vertex_index in &self.vertex_render_order {
-            let vertex = self.vertices.get_mut(*vertex_index).unwrap();
-            let vertex_data = data.get_vertices().get(*vertex_index).unwrap();
-            vertex.widget.update(ctx, vertex_data, env);
+        for node_index in &self.node_render_order {
+            let node = self.nodes.get_mut(*node_index).unwrap();
+            let node_data = data.get_nodes().get(*node_index).unwrap();
+            node.widget.update(ctx, node_data, env);
         }
 
-        let mut vertices = self.vertices.iter_mut();
-        data.get_vertices().for_each(|vertex_data, _| {
-            if let Some(vertex) = vertices.next() {
-                vertex.widget.update(ctx, vertex_data, env);
+        let mut nodes = self.nodes.iter_mut();
+        data.get_nodes().for_each(|node_data, _| {
+            if let Some(node) = nodes.next() {
+                node.widget.update(ctx, node_data, env);
             }
         });
 
@@ -312,24 +297,15 @@ impl Widget<GraphData> for GraphWidget {
         data: &GraphData,
         env: &Env,
     ) -> Size {
-        for vertex_index in &self.vertex_render_order {
-            let vertex = self.vertices.get_mut(*vertex_index).unwrap();
-            let vertex_data = data.get_vertices().get(*vertex_index).unwrap();
-            vertex.widget.layout(ctx, bc, vertex_data, env);
-            vertex
+        let child_box_constraints = BoxConstraints::new(Size::ZERO, Size::new(1000., 1000.));
+        for node_index in &self.node_render_order {
+            let node = self.nodes.get_mut(*node_index).unwrap();
+            let node_data = data.get_nodes().get(*node_index).unwrap();
+            node.widget.layout(ctx, &child_box_constraints, node_data, env);
+            node
                 .widget
-                .set_origin(ctx, vertex_data, env, vertex.position);
+                .set_origin(ctx, node_data, env, node.position);
         }
-
-        // let mut vertices = self.vertices.iter_mut();
-        // data.get_vertices().for_each(|vertex_data, _| {
-        //     if let Some(vertex) = vertices.next() {
-        //         vertex.widget.layout(ctx, bc, vertex_data, env);
-        //         vertex
-        //             .widget
-        //             .set_origin(ctx, vertex_data, env, vertex.position);
-        //     };
-        // });
 
         self.last_layout_instant = Instant::now();
         bc.max()
@@ -339,20 +315,20 @@ impl Widget<GraphData> for GraphWidget {
         let clip_rect = ctx.size().to_rect();
         ctx.fill(clip_rect, &Color::rgb8(15, 15, 15));
 
-        for ((start_relative, end_relative), (start_vertex_index, _, end_vertex_index, _)) in
+        for ((start_relative, end_relative), (start_node_index, _, end_node_index, _)) in
             self.edges.iter().zip(data.get_edges())
         {
             let start = *start_relative
                 + self
-                    .vertices
-                    .get(*start_vertex_index)
+                    .nodes
+                    .get(*start_node_index)
                     .unwrap()
                     .position
                     .to_vec2();
             let end = *end_relative
                 + self
-                    .vertices
-                    .get(*end_vertex_index)
+                    .nodes
+                    .get(*end_node_index)
                     .unwrap()
                     .position
                     .to_vec2();
@@ -365,25 +341,18 @@ impl Widget<GraphData> for GraphWidget {
             ctx.stroke(path, &Color::rgb8(100, 100, 100), 2.0);
         }
 
-        for vertex_index in &self.vertex_render_order {
-            let vertex = self.vertices.get_mut(*vertex_index).unwrap();
-            let vertex_data = data.get_vertices().get(*vertex_index).unwrap();
-            if vertex.is_selected {
-                let vertex_rect = vertex.widget.layout_rect();
+        for node_index in &self.node_render_order {
+            let node = self.nodes.get_mut(*node_index).unwrap();
+            let node_data = data.get_nodes().get(*node_index).unwrap();
+            if node.is_selected {
+                let node_rect = node.widget.layout_rect();
                 ctx.stroke(
-                    vertex_rect.inflate(5., 5.).to_rounded_rect(10.),
+                    node_rect.inflate(5., 5.).to_rounded_rect(10.),
                     &Color::rgb8(200, 50, 150),
                     1.,
                 );
             }
-            vertex.widget.paint(ctx, vertex_data, env);
+            node.widget.paint(ctx, node_data, env);
         }
-
-        // let mut vertices = self.vertices.iter_mut();
-        // data.get_vertices().for_each(|vertex_data, _| {
-        //     if let Some(vertex) = vertices.next() {
-        //         vertex.widget.paint(ctx, vertex_data, env);
-        //     }
-        // });
     }
 }

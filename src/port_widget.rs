@@ -18,7 +18,6 @@ impl PortWidget {
     }
 }
 
-
 impl<T> Widget<T> for PortWidget {
     fn event(&mut self, ctx: &mut EventCtx, event: &Event, _data: &mut T, _env: &Env) {
         match event {

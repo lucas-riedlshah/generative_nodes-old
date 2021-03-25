@@ -3,40 +3,41 @@ use druid::{
   Data,
 };
 
-use crate::vertex_data::VertexData;
+use crate::node_data::NodeData;
 
 #[derive(Clone)]
 pub struct GraphData {
-  vertices: Vector<VertexData>,
+  nodes: Vector<NodeData>,
   edges: Vector<(usize, &'static str, usize, &'static str)>,
-  factories: HashMap<&'static str, fn() -> VertexData>,
+  // values: HashMap<Port, Packet>, // This is the ECS for all "values" of all the nodes.
+  factories: HashMap<&'static str, fn() -> NodeData>,
 }
 
 impl Data for GraphData {
   fn same(&self, other: &Self) -> bool {
-    self.vertices.same(&other.vertices) && self.edges.same(&other.edges)
+    self.nodes.same(&other.nodes) && self.edges.same(&other.edges)
   }
 }
 
 impl GraphData {
   pub fn new() -> Self {
     GraphData {
-      vertices: Vector::new(),
+      nodes: Vector::new(),
       edges: Vector::new(),
       factories: HashMap::new(),
     }
   }
 
-  pub fn get_vertices(&self) -> &Vector<VertexData> {
-    &self.vertices
+  pub fn get_nodes(&self) -> &Vector<NodeData> {
+    &self.nodes
   }
 
   pub fn get_edges(&self) -> &Vector<(usize, &'static str, usize, &'static str)> {
     &self.edges
   }
 
-  pub fn get_vertices_mut(&mut self) -> &mut Vector<VertexData> {
-    &mut self.vertices
+  pub fn get_nodes_mut(&mut self) -> &mut Vector<NodeData> {
+    &mut self.nodes
   }
 
   pub fn get_edges_mut(&mut self) -> &mut Vector<(usize, &'static str, usize, &'static str)> {

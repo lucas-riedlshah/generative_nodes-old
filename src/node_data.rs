@@ -10,21 +10,21 @@ pub enum Packet {
 }
 
 #[derive(Clone)]
-pub struct VertexData {
+pub struct NodeData {
     inputs: Arc<HashMap<&'static str, Packet>>,
     outputs: Arc<HashMap<&'static str, Packet>>,
     id: usize,
-    generate_widget: fn(data: &VertexData) -> Box<dyn Widget<VertexData>>,
+    generate_widget: fn(data: &NodeData) -> Box<dyn Widget<NodeData>>,
 }
 
-impl VertexData {
+impl NodeData {
     pub fn new(
         inputs: HashMap<&'static str, Packet>,
         outputs: HashMap<&'static str, Packet>,
         id: usize,
-        generate_widget: fn(data: &VertexData) -> Box<dyn Widget<VertexData>>,
+        generate_widget: fn(data: &NodeData) -> Box<dyn Widget<NodeData>>,
     ) -> Self {
-        VertexData {
+        NodeData {
             inputs: Arc::new(inputs),
             outputs: Arc::new(outputs),
             id,
@@ -35,12 +35,12 @@ impl VertexData {
     pub fn id(&self) -> usize {
         self.id.clone()
     }
-    pub fn generate_widget(&self) -> Box<dyn Widget<VertexData>> {
+    pub fn generate_widget(&self) -> Box<dyn Widget<NodeData>> {
         (self.generate_widget)(&self)
     }
 }
 
-impl Data for VertexData {
+impl Data for NodeData {
     fn same(&self, other: &Self) -> bool {
         self.inputs.same(&other.inputs) && self.outputs.same(&other.outputs)
     }
@@ -49,8 +49,8 @@ impl Data for VertexData {
 // The following lenses need to be replaced with a macro on the enum I think.
 pub struct FloatInputLens(pub &'static str);
 
-impl Lens<VertexData, f64> for FloatInputLens {
-    fn with<R, F: FnOnce(&f64) -> R>(&self, data: &VertexData, f: F) -> R {
+impl Lens<NodeData, f64> for FloatInputLens {
+    fn with<R, F: FnOnce(&f64) -> R>(&self, data: &NodeData, f: F) -> R {
         let input = data.inputs.get(&self.0).cloned().unwrap();
         match input {
             Packet::Float(value) => f(&value),
@@ -58,7 +58,7 @@ impl Lens<VertexData, f64> for FloatInputLens {
         }
     }
 
-    fn with_mut<R, F: FnOnce(&mut f64) -> R>(&self, data: &mut VertexData, f: F) -> R {
+    fn with_mut<R, F: FnOnce(&mut f64) -> R>(&self, data: &mut NodeData, f: F) -> R {
         let mut input = match data.inputs.get(&self.0).cloned().unwrap() {
             Packet::Float(value) => value,
             _ => panic!("input was not a Float"),
@@ -75,8 +75,8 @@ impl Lens<VertexData, f64> for FloatInputLens {
 
 pub struct StringInputLens(pub &'static str);
 
-impl Lens<VertexData, String> for StringInputLens {
-    fn with<R, F: FnOnce(&String) -> R>(&self, data: &VertexData, f: F) -> R {
+impl Lens<NodeData, String> for StringInputLens {
+    fn with<R, F: FnOnce(&String) -> R>(&self, data: &NodeData, f: F) -> R {
         let input = data.inputs.get(&self.0).cloned().unwrap();
         match input {
             Packet::String(value) => f(&value),
@@ -84,7 +84,7 @@ impl Lens<VertexData, String> for StringInputLens {
         }
     }
 
-    fn with_mut<R, F: FnOnce(&mut String) -> R>(&self, data: &mut VertexData, f: F) -> R {
+    fn with_mut<R, F: FnOnce(&mut String) -> R>(&self, data: &mut NodeData, f: F) -> R {
         let mut input = match data.inputs.get(&self.0).cloned().unwrap() {
             Packet::String(value) => value,
             _ => panic!("input was not a Float"),
@@ -101,8 +101,8 @@ impl Lens<VertexData, String> for StringInputLens {
 
 pub struct BoolInputLens(pub &'static str);
 
-impl Lens<VertexData, bool> for BoolInputLens {
-    fn with<R, F: FnOnce(&bool) -> R>(&self, data: &VertexData, f: F) -> R {
+impl Lens<NodeData, bool> for BoolInputLens {
+    fn with<R, F: FnOnce(&bool) -> R>(&self, data: &NodeData, f: F) -> R {
         let input = data.inputs.get(&self.0).cloned().unwrap();
         match input {
             Packet::Bool(value) => f(&value),
@@ -110,7 +110,7 @@ impl Lens<VertexData, bool> for BoolInputLens {
         }
     }
 
-    fn with_mut<R, F: FnOnce(&mut bool) -> R>(&self, data: &mut VertexData, f: F) -> R {
+    fn with_mut<R, F: FnOnce(&mut bool) -> R>(&self, data: &mut NodeData, f: F) -> R {
         let mut input = match data.inputs.get(&self.0).cloned().unwrap() {
             Packet::Bool(value) => value,
             _ => panic!("input was not a Float"),
