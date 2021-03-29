@@ -2,7 +2,7 @@ use std::ops::Add;
 
 use druid::{kurbo::Circle, widget::prelude::*, Color, Command, Point, Target};
 
-use crate::graph_widget::{ADD_EDGE, Port};
+use crate::gui::graph_widget::{ADD_EDGE, Port};
 
 const RADIUS: f64 = 5.;
 

@@ -5,17 +5,14 @@ use druid::{
     AppLauncher, Color, PlatformError, Widget, WidgetExt, WindowDesc,
 };
 
-mod graph_data;
-mod graph_widget;
-mod node_data;
-mod node_widget;
-mod port_widget;
+mod core;
+mod gui;
 
-use crate::graph_data::GraphData;
-use crate::graph_widget::{Direction, GraphWidget, Port};
-use crate::node_data::{BoolInputLens, FloatInputLens, NodeData, Packet, StringInputLens};
-use crate::node_widget::NodeWidget;
-use crate::port_widget::PortWidget;
+use crate::core::graph_data::GraphData;
+use crate::gui::graph_widget::{Direction, GraphWidget, Port};
+use crate::core::node_data::{BoolInputLens, FloatInputLens, NodeData, Packet, StringInputLens};
+use crate::gui::node_widget::NodeWidget;
+use crate::gui::port_widget::PortWidget;
 
 fn main() -> Result<(), PlatformError> {
     let main_window = WindowDesc::new(ui_builder());

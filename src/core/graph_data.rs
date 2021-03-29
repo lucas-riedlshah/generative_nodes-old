@@ -1,12 +1,10 @@
-use std::collections::{HashMap};
 use std::sync::Arc;
 
 use druid::{
-  // im::{HashMap, Vector},
   Data,
 };
 
-use crate::node_data::NodeData;
+use crate::core::node_data::NodeData;
 
 #[derive(Clone, Data)]
 pub struct GraphData {

@@ -6,8 +6,8 @@ use druid::{
     PaintCtx, Point, RenderContext, Selector, Size, Target, UpdateCtx, Widget, WidgetPod,
 };
 
-use crate::graph_data::GraphData;
-use crate::node_data::NodeData;
+use crate::core::graph_data::GraphData;
+use crate::core::node_data::NodeData;
 
 // These will need to be moved to a delegate when GraphWidget is no longer the root of the application.
 const ADD_NODE: Selector<f64> = Selector::<f64>::new("add_node");
