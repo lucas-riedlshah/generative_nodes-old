@@ -81,18 +81,20 @@ impl GraphWidget {
     // This might need to be replaced.
     fn update_child_count(&mut self, data: &GraphData, _env: &Env) -> bool {
         let len = self.nodes.len();
-        match len.cmp(&data.get_nodes().data_len()) {
-            Ordering::Greater => self.nodes.truncate(data.get_nodes().data_len()),
-            Ordering::Less => data.get_nodes().for_each(|node_data, i| {
-                if i >= len {
-                    let node = Node::new(node_data.generate_widget());
-                    self.node_render_order.push(self.nodes.len());
-                    self.nodes.push(node);
+        match len.cmp(&data.get_nodes().len()) {
+            Ordering::Greater => self.nodes.truncate(data.get_nodes().len()),
+            Ordering::Less => {
+                for (node_data, i) in data.get_nodes().iter().zip(0..data.get_nodes().len()) {
+                    if i >= len {
+                        let node = Node::new(node_data.generate_widget());
+                        self.node_render_order.push(self.nodes.len());
+                        self.nodes.push(node);
+                    }
                 }
-            }),
+            }
             Ordering::Equal => (),
         }
-        len != data.get_nodes().data_len()
+        len != data.get_nodes().len()
     }
 
     fn deselect_all_nodes(&mut self, ctx: &mut EventCtx) {
@@ -138,7 +140,7 @@ impl Widget<GraphData> for GraphWidget {
                                 if first_edge_end.0 != edge_end.0 {
                                     // Both nodes need to say yes this is okay.
                                     // Need to check if the edge already exists.
-                                    data.get_edges_mut().push_back((
+                                    data.get_edges_mut().push((
                                         first_edge_end.0.node_id,
                                         first_edge_end.0.port_name,
                                         edge_end.0.node_id,
@@ -153,11 +155,7 @@ impl Widget<GraphData> for GraphWidget {
                                             .position)
                                         .to_point();
                                     let p1 = (edge_end.1
-                                        - self
-                                            .nodes
-                                            .get(edge_end.0.node_id)
-                                            .unwrap()
-                                            .position)
+                                        - self.nodes.get(edge_end.0.node_id).unwrap().position)
                                         .to_point();
                                     self.edges.push((p0, p1))
                                 }
@@ -279,11 +277,11 @@ impl Widget<GraphData> for GraphWidget {
         }
 
         let mut nodes = self.nodes.iter_mut();
-        data.get_nodes().for_each(|node_data, _| {
+        for node_data in data.get_nodes() {
             if let Some(node) = nodes.next() {
                 node.widget.update(ctx, node_data, env);
             }
-        });
+        };
 
         if self.update_child_count(data, env) {
             ctx.children_changed();
@@ -301,10 +299,9 @@ impl Widget<GraphData> for GraphWidget {
         for node_index in &self.node_render_order {
             let node = self.nodes.get_mut(*node_index).unwrap();
             let node_data = data.get_nodes().get(*node_index).unwrap();
-            node.widget.layout(ctx, &child_box_constraints, node_data, env);
-            node
-                .widget
-                .set_origin(ctx, node_data, env, node.position);
+            node.widget
+                .layout(ctx, &child_box_constraints, node_data, env);
+            node.widget.set_origin(ctx, node_data, env, node.position);
         }
 
         self.last_layout_instant = Instant::now();
@@ -325,13 +322,7 @@ impl Widget<GraphData> for GraphWidget {
                     .unwrap()
                     .position
                     .to_vec2();
-            let end = *end_relative
-                + self
-                    .nodes
-                    .get(*end_node_index)
-                    .unwrap()
-                    .position
-                    .to_vec2();
+            let end = *end_relative + self.nodes.get(*end_node_index).unwrap().position.to_vec2();
             let path = QuadBez::new(
                 start,
                 // need to figure out a cheaper way to droop the cables. Or maybe not?

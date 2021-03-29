@@ -31,7 +31,7 @@ fn main() -> Result<(), PlatformError> {
     let mut outputs_2 = HashMap::new();
     outputs_2.insert("bool_out", Packet::Bool(false));
 
-    data.get_nodes_mut().push_back(NodeData::new(
+    data.get_nodes_mut().push(NodeData::new(
         inputs_2.clone(),
         outputs_2.clone(),
         id,
@@ -40,7 +40,7 @@ fn main() -> Result<(), PlatformError> {
 
     id = data.get_nodes().len();
 
-    data.get_nodes_mut().push_back(NodeData::new(
+    data.get_nodes_mut().push(NodeData::new(
         inputs_2,
         outputs_2,
         id,
