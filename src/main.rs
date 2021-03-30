@@ -9,8 +9,8 @@ mod core;
 mod gui;
 
 use crate::core::graph_data::GraphData;
-use crate::gui::graph_widget::{Direction, GraphWidget, Port};
 use crate::core::node_data::{BoolInputLens, FloatInputLens, NodeData, Packet, StringInputLens};
+use crate::gui::graph_widget::{Direction, GraphWidget, Port};
 use crate::gui::node_widget::NodeWidget;
 use crate::gui::port_widget::PortWidget;
 
@@ -83,7 +83,11 @@ fn placeholder_generator_thing_2(data: &NodeData) -> Box<dyn Widget<NodeData>> {
                                     Direction::Input,
                                 )))
                                 .with_spacer(5.)
-                                .with_child(Slider::new().with_range(-100., 100.).lens(FloatInputLens("float"))),
+                                .with_child(
+                                    Slider::new()
+                                        .with_range(-100., 100.)
+                                        .lens(FloatInputLens("float")),
+                                ),
                         )
                         .with_spacer(5.)
                         .with_child(
