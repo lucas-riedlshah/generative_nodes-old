@@ -8,15 +8,15 @@ use druid::{
 mod core;
 mod gui;
 
-use crate::core::graph_data::GraphData;
-use crate::core::node_data::{BoolInputLens, FloatInputLens, NodeData, Packet, StringInputLens};
+use crate::core::Graph;
+use crate::core::{BoolInputLens, FloatInputLens, Node, Packet, StringInputLens};
 use crate::gui::graph_widget::{Direction, GraphWidget, Port};
 use crate::gui::node_widget::NodeWidget;
 use crate::gui::port_widget::PortWidget;
 
 fn main() -> Result<(), PlatformError> {
     let main_window = WindowDesc::new(ui_builder());
-    let mut data = GraphData::new();
+    let mut data = Graph::new();
 
     let mut id = data.get_nodes().len();
 
@@ -28,7 +28,7 @@ fn main() -> Result<(), PlatformError> {
     let mut outputs_2 = HashMap::new();
     outputs_2.insert("bool_out", Packet::Bool(false));
 
-    data.get_nodes_mut().push(NodeData::new(
+    data.get_nodes_mut().push(Node::new(
         inputs_2.clone(),
         outputs_2.clone(),
         id,
@@ -37,7 +37,7 @@ fn main() -> Result<(), PlatformError> {
 
     id = data.get_nodes().len();
 
-    data.get_nodes_mut().push(NodeData::new(
+    data.get_nodes_mut().push(Node::new(
         inputs_2,
         outputs_2,
         id,
@@ -49,12 +49,12 @@ fn main() -> Result<(), PlatformError> {
         .launch(data)
 }
 
-fn ui_builder() -> impl Widget<GraphData> {
+fn ui_builder() -> impl Widget<Graph> {
     GraphWidget::new()
     //.debug_paint_layout()
 }
 
-fn placeholder_generator_thing_2(data: &NodeData) -> Box<dyn Widget<NodeData>> {
+fn placeholder_generator_thing_2(data: &Node) -> Box<dyn Widget<Node>> {
     Box::new(NodeWidget::new(
         Container::new(
             Flex::column()

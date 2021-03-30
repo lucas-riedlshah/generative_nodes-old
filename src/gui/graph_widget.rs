@@ -6,8 +6,8 @@ use druid::{
     PaintCtx, Point, RenderContext, Selector, Size, Target, UpdateCtx, Widget, WidgetPod,
 };
 
-use crate::core::graph_data::GraphData;
-use crate::core::node_data::NodeData;
+use crate::core::Graph;
+use crate::core::Node;
 
 // These will need to be moved to a delegate when GraphWidget is no longer the root of the application.
 const ADD_NODE: Selector<f64> = Selector::<f64>::new("add_node");
@@ -36,15 +36,15 @@ impl Port {
     }
 }
 
-struct Node {
-    widget: WidgetPod<NodeData, Box<dyn Widget<NodeData>>>,
+struct GraphWidgetNode {
+    widget: WidgetPod<Node, Box<dyn Widget<Node>>>,
     position: Point,
     is_selected: bool,
 }
 
-impl Node {
-    fn new<W: Widget<NodeData> + 'static>(widget: W) -> Self {
-        Node {
+impl GraphWidgetNode {
+    fn new<W: Widget<Node> + 'static>(widget: W) -> Self {
+        GraphWidgetNode {
             widget: WidgetPod::new(Box::new(widget)),
             position: Point::new(5., 5.),
             is_selected: false,
@@ -53,7 +53,7 @@ impl Node {
 }
 
 pub struct GraphWidget {
-    nodes: Vec<Node>,
+    nodes: Vec<GraphWidgetNode>,
     // maybe replace edges with their own widgets so that they can be selected and stuff.
     edges: Vec<(Point, Point)>,
     node_render_order: Vec<usize>,
@@ -79,14 +79,14 @@ impl GraphWidget {
     }
 
     // This might need to be replaced.
-    fn update_child_count(&mut self, data: &GraphData, _env: &Env) -> bool {
+    fn update_child_count(&mut self, data: &Graph, _env: &Env) -> bool {
         let len = self.nodes.len();
         match len.cmp(&data.get_nodes().len()) {
             Ordering::Greater => self.nodes.truncate(data.get_nodes().len()),
             Ordering::Less => {
                 for (node_data, i) in data.get_nodes().iter().zip(0..data.get_nodes().len()) {
                     if i >= len {
-                        let node = Node::new(node_data.generate_widget());
+                        let node = GraphWidgetNode::new(node_data.generate_widget());
                         self.node_render_order.push(self.nodes.len());
                         self.nodes.push(node);
                     }
@@ -120,8 +120,8 @@ impl GraphWidget {
     }
 }
 
-impl Widget<GraphData> for GraphWidget {
-    fn event(&mut self, ctx: &mut EventCtx, event: &Event, data: &mut GraphData, env: &Env) {
+impl Widget<Graph> for GraphWidget {
+    fn event(&mut self, ctx: &mut EventCtx, event: &Event, data: &mut Graph, env: &Env) {
         for node_index in self.node_render_order.iter().rev() {
             let node = self.nodes.get_mut(*node_index).unwrap();
             let node_data = data.get_nodes_mut().get_mut(*node_index).unwrap();
@@ -221,7 +221,7 @@ impl Widget<GraphData> for GraphWidget {
                 self.is_translating_nodes = false;
                 if mouse.button.is_right() {
                     ctx.show_context_menu(ContextMenu::new(
-                        MenuDesc::<GraphData>::new(LocalizedString::new("Add node")).append(
+                        MenuDesc::<Graph>::new(LocalizedString::new("Add node")).append(
                             MenuItem::new(
                                 LocalizedString::new("Node Type 1"),
                                 Command::new(ADD_NODE, 69., Target::Widget(ctx.widget_id())),
@@ -253,7 +253,7 @@ impl Widget<GraphData> for GraphWidget {
         &mut self,
         ctx: &mut LifeCycleCtx,
         event: &LifeCycle,
-        data: &GraphData,
+        data: &Graph,
         env: &Env,
     ) {
         if let LifeCycle::WidgetAdded = event {
@@ -269,7 +269,7 @@ impl Widget<GraphData> for GraphWidget {
         }
     }
 
-    fn update(&mut self, ctx: &mut UpdateCtx, _old_data: &GraphData, data: &GraphData, env: &Env) {
+    fn update(&mut self, ctx: &mut UpdateCtx, _old_data: &Graph, data: &Graph, env: &Env) {
         for node_index in &self.node_render_order {
             let node = self.nodes.get_mut(*node_index).unwrap();
             let node_data = data.get_nodes().get(*node_index).unwrap();
@@ -292,7 +292,7 @@ impl Widget<GraphData> for GraphWidget {
         &mut self,
         ctx: &mut LayoutCtx,
         bc: &BoxConstraints,
-        data: &GraphData,
+        data: &Graph,
         env: &Env,
     ) -> Size {
         let child_box_constraints = BoxConstraints::new(Size::ZERO, Size::new(1000., 1000.));
@@ -308,7 +308,7 @@ impl Widget<GraphData> for GraphWidget {
         bc.max()
     }
 
-    fn paint(&mut self, ctx: &mut PaintCtx, data: &GraphData, env: &Env) {
+    fn paint(&mut self, ctx: &mut PaintCtx, data: &Graph, env: &Env) {
         let clip_rect = ctx.size().to_rect();
         ctx.fill(clip_rect, &Color::rgb8(15, 15, 15));
 

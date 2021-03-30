@@ -4,23 +4,23 @@ use druid::{
   Data,
 };
 
-use crate::core::node_data::NodeData;
+use crate::core::node::Node;
 
 #[derive(Clone, Data)]
-pub struct GraphData {
-  nodes: Arc<Vec<NodeData>>,
+pub struct Graph {
+  nodes: Arc<Vec<Node>>,
   edges: Arc<Vec<(usize, &'static str, usize, &'static str)>>
 }
 
-impl GraphData {
+impl Graph {
   pub fn new() -> Self {
-    GraphData {
+    Graph {
       nodes: Arc::new(Vec::new()),
       edges: Arc::new(Vec::new()),
     }
   }
 
-  pub fn get_nodes(&self) -> &Vec<NodeData> {
+  pub fn get_nodes(&self) -> &Vec<Node> {
     &self.nodes
   }
 
@@ -28,7 +28,7 @@ impl GraphData {
     &self.edges
   }
 
-  pub fn get_nodes_mut(&mut self) -> &mut Vec<NodeData> {
+  pub fn get_nodes_mut(&mut self) -> &mut Vec<Node> {
     Arc::make_mut(&mut self.nodes)
   }
 
