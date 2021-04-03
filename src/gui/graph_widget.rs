@@ -338,7 +338,7 @@ impl Widget<Graph> for GraphWidget {
             if node.is_selected {
                 let node_rect = node.widget.layout_rect();
                 ctx.stroke(
-                    node_rect.inflate(5., 5.).to_rounded_rect(10.),
+                    node_rect.inflate(5., 5.).to_rounded_rect(15.),
                     &Color::rgb8(200, 50, 150),
                     1.,
                 );
