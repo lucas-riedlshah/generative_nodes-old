@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::any::Any;
 
 use druid::{
     widget::{Checkbox, Container, CrossAxisAlignment, Flex, Label, Slider, TextBox},
@@ -8,8 +9,7 @@ use druid::{
 mod core;
 mod gui;
 
-use crate::core::Graph;
-use crate::core::{BoolInputLens, FloatInputLens, Node, Packet, StringInputLens};
+use crate::core::{BoolInputLens, Cache, CacheIndex, FloatInputLens, Graph, Node, Packet, StringInputLens};
 use crate::gui::graph_widget::{Direction, GraphWidget, Port};
 use crate::gui::node_widget::NodeWidget;
 use crate::gui::port_widget::PortWidget;
@@ -43,6 +43,20 @@ fn main() -> Result<(), PlatformError> {
         id,
         placeholder_generator_thing_2,
     ));
+
+    let mut test_cache = Cache::new();
+    test_cache.register::<f64>();
+    test_cache.register::<String>();
+
+    let mut cache_indices = Vec::<Box<dyn Any>>::new();
+
+    cache_indices.push(Box::new(test_cache.insert(25.)));
+    cache_indices.push(Box::new(test_cache.insert(2.)));
+    cache_indices.push(Box::new(test_cache.insert("yoyo".to_owned())));
+
+    let cache_index = cache_indices.get(1).unwrap().downcast_ref::<Box<CacheIndex<f64>>>().unwrap();
+
+    // println!("{}", cache_indices.get(*cache_index.as_ref()).unwrap());
 
     AppLauncher::with_window(main_window)
         .log_to_console()
