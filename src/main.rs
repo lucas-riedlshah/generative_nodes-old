@@ -48,15 +48,15 @@ fn main() -> Result<(), PlatformError> {
     test_cache.register::<f64>();
     test_cache.register::<String>();
 
-    let mut cache_indices = Vec::<Box<dyn Any>>::new();
+    let mut cache_indices = Vec::<Box<CacheIndex>>::new();
 
     cache_indices.push(Box::new(test_cache.insert(25.)));
     cache_indices.push(Box::new(test_cache.insert(2.)));
     cache_indices.push(Box::new(test_cache.insert("yoyo".to_owned())));
 
-    let cache_index = cache_indices.get(1).unwrap().downcast_ref::<Box<CacheIndex<f64>>>().unwrap();
+    let cache_index = cache_indices.get(1).unwrap();
 
-    // println!("{}", cache_indices.get(*cache_index.as_ref()).unwrap());
+    println!("{}", test_cache.get::<f64>(cache_index).unwrap());
 
     AppLauncher::with_window(main_window)
         .log_to_console()
