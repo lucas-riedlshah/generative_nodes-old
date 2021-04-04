@@ -1,4 +1,4 @@
-use std::{collections::HashMap, marker::PhantomData};
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use druid::{Data, Lens, Widget};

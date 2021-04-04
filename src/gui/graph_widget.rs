@@ -1,9 +1,9 @@
 use std::{cmp::Ordering, ops::Add, time::Instant};
 
 use druid::{
-    kurbo::QuadBez, widget::ListIter, BoxConstraints, Color, Command, ContextMenu, Env, Event,
-    EventCtx, LayoutCtx, LifeCycle, LifeCycleCtx, LocalizedString, MenuDesc, MenuItem, MouseEvent,
-    PaintCtx, Point, RenderContext, Selector, Size, Target, UpdateCtx, Widget, WidgetPod,
+    kurbo::QuadBez, BoxConstraints, Color, Command, ContextMenu, Env, Event, EventCtx, LayoutCtx,
+    LifeCycle, LifeCycleCtx, LocalizedString, MenuDesc, MenuItem, PaintCtx, Point, RenderContext,
+    Selector, Size, Target, UpdateCtx, Widget, WidgetPod,
 };
 
 use crate::core::Graph;
@@ -249,13 +249,7 @@ impl Widget<Graph> for GraphWidget {
         }
     }
 
-    fn lifecycle(
-        &mut self,
-        ctx: &mut LifeCycleCtx,
-        event: &LifeCycle,
-        data: &Graph,
-        env: &Env,
-    ) {
+    fn lifecycle(&mut self, ctx: &mut LifeCycleCtx, event: &LifeCycle, data: &Graph, env: &Env) {
         if let LifeCycle::WidgetAdded = event {
             if self.update_child_count(data, env) {
                 ctx.children_changed();
@@ -281,7 +275,7 @@ impl Widget<Graph> for GraphWidget {
             if let Some(node) = nodes.next() {
                 node.widget.update(ctx, node_data, env);
             }
-        };
+        }
 
         if self.update_child_count(data, env) {
             ctx.children_changed();

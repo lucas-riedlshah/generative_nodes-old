@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::any::Any;
 
 use druid::{
     widget::{Checkbox, Container, CrossAxisAlignment, Flex, Label, Slider, TextBox},
