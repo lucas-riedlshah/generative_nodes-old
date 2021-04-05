@@ -49,28 +49,39 @@ impl Cache {
     }
 
     pub fn get<T: Default + 'static>(&self, cache_index: &CacheIndex) -> Option<&T> {
-        match self.data.get::<AllocatedVec<T>>() {
-            Some(vec) => vec.get(*cache_index.index()),
-            None => return None,
+        if cache_index.is_type::<T>() {
+            if let Some(vec) = self.data.get::<AllocatedVec<T>>() {
+                return vec.get(*cache_index.index());
+            }
         }
+        None
     }
 
     pub fn get_mut<T: Default + 'static>(&mut self, cache_index: &CacheIndex) -> Option<&mut T> {
-        match self.data.get_mut::<AllocatedVec<T>>() {
-            Some(vec) => vec.get_mut(*cache_index.index()),
-            None => return None,
+        if cache_index.is_type::<T>() {
+            if let Some(vec) = self.data.get_mut::<AllocatedVec<T>>() {
+                return vec.get_mut(*cache_index.index());
+            }
         }
+        None
     }
 
     pub fn set<T: Default + 'static>(&mut self, cache_index: &CacheIndex, value: T) {
-        self.data.get_mut::<AllocatedVec<T>>().unwrap().set(*cache_index.index(), value)
+        if cache_index.is_type::<T>() {
+            self.data
+                .get_mut::<AllocatedVec<T>>()
+                .unwrap()
+                .set(*cache_index.index(), value)
+        }
     }
 
     pub fn remove<T: Default + 'static>(&mut self, cache_index: &CacheIndex) {
-        self.data
-            .get_mut::<AllocatedVec<T>>()
-            .unwrap()
-            .remove(*cache_index.index());
+        if cache_index.is_type::<T>() {
+            self.data
+                .get_mut::<AllocatedVec<T>>()
+                .unwrap()
+                .remove(*cache_index.index());
+        }
     }
 }
 

@@ -44,8 +44,6 @@ fn main() -> Result<(), PlatformError> {
     ));
 
     let mut test_cache = Cache::new();
-    test_cache.register::<f64>();
-    test_cache.register::<String>();
 
     let mut cache_indices = Vec::<Box<CacheIndex>>::new();
 
@@ -53,9 +51,9 @@ fn main() -> Result<(), PlatformError> {
     cache_indices.push(Box::new(test_cache.insert(2.)));
     cache_indices.push(Box::new(test_cache.insert("yoyo".to_owned())));
 
-    let cache_index = cache_indices.get(1).unwrap();
+    let cache_index = cache_indices.get(2).unwrap();
 
-    println!("{}", test_cache.get::<f64>(cache_index).unwrap());
+    println!("{}", test_cache.get::<String>(cache_index).unwrap());
 
     AppLauncher::with_window(main_window)
         .log_to_console()
