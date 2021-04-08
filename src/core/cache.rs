@@ -2,6 +2,7 @@ use std::any::TypeId;
 
 use anymap::AnyMap;
 
+#[derive(Clone)]
 pub struct CacheIndex {
     type_id: TypeId,
     index: usize,
@@ -40,7 +41,7 @@ impl Cache {
     }
 
     pub fn insert<T: Default + 'static>(&mut self, value: T) -> CacheIndex {
-        if !self.data.contains::<T>() {
+        if !self.data.contains::<AllocatedVec<T>>() {
             self.register::<T>();
         }
         let vec = self.data.get_mut::<AllocatedVec<T>>().unwrap();
@@ -126,6 +127,6 @@ impl<T: Default> AllocatedVec<T> {
     }
 
     pub fn len(&self) -> usize {
-        self.vec.len()
+        self.vec.len() - self.free.len()
     }
 }
