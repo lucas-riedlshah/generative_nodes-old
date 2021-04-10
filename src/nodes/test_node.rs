@@ -11,7 +11,9 @@ pub fn test_node_factory(cache: &mut Cache) -> Node {
     outputs.push(cache.insert("output 1".to_owned()));
     outputs.push(cache.insert("output 2".to_owned()));
 
-    Node::new(inputs, outputs, compute, remove_all_cache, remove_input_cache, create_input_cache)
+    Node::new(inputs, outputs, remove_all_cache)
+        .with_compute(compute)
+        .with_create_remove_input_cache(create_input_cache, remove_input_cache)
 }
 
 fn compute(inputs: &Vec<CacheIndex>, outputs: &Vec<CacheIndex>, cache: &mut Cache) {
@@ -22,7 +24,7 @@ fn compute(inputs: &Vec<CacheIndex>, outputs: &Vec<CacheIndex>, cache: &mut Cach
 fn remove_input_cache(port: usize, cache_index: CacheIndex, cache: &mut Cache) {
     match port {
         0 | 1 | 2 => cache.remove::<String>(&cache_index),
-        _ => ()
+        _ => (),
     }
 }
 
@@ -31,7 +33,7 @@ fn create_input_cache(port: usize, cache: &mut Cache) -> Option<CacheIndex> {
         0 => Some(cache.insert("input 0".to_owned())),
         1 => Some(cache.insert("input 1".to_owned())),
         2 => Some(cache.insert("input 2".to_owned())),
-        _ => None
+        _ => None,
     }
 }
 
