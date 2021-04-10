@@ -4,32 +4,25 @@ mod nodes;
 
 use crate::core::App;
 // use crate::gui::graph_widget::GraphWidget;
-use crate::nodes::test_node_factory;
+use crate::nodes::{particle_node_factory, value_node_factory};
 
 fn main() {
     let mut app = App::new();
 
-    app.add_node(test_node_factory);
-    app.add_node(test_node_factory);
-    app.add_node(test_node_factory);
-    app.add_node(test_node_factory);
+    let value_node = app.add_node(value_node_factory);
+    let value_cache_index = app.get_node(value_node).get_output(0).unwrap().clone();
+    *app.get_cache_mut().get_mut(&value_cache_index).unwrap() = 100.;
 
-    app.compute();
+    let particle_node = app.add_node(particle_node_factory);
 
-    app.add_edge(0, 1, 1, 0);
-    app.add_edge(0, 1, 1, 1);
-    app.add_edge(0, 1, 1, 2);
-    app.add_edge(1, 0, 0, 0);
-    app.add_edge(1, 0, 0, 1);
+    app.add_edge(value_node, 0, particle_node, 0);
 
-    app.compute();
-
-    app.remove_edge_to(0, 0);
-    app.remove_edges_from(0, 1);
+    for i in 0..100  {
+        app.compute();
+    }
 
     // let main_window = WindowDesc::new(GraphWidget::new());
     // AppLauncher::with_window(main_window)
     //     // .log_to_console()
     //     .launch(data)
-
 }
