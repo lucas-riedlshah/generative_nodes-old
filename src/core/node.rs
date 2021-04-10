@@ -1,4 +1,4 @@
-use crate::core::{CacheIndex, Cache};
+use crate::core::{Cache, CacheIndex};
 
 #[derive(Clone)]
 pub struct Node {
@@ -6,30 +6,50 @@ pub struct Node {
     outputs: Vec<CacheIndex>,
     compute: fn(inputs: &Vec<CacheIndex>, outputs: &Vec<CacheIndex>, cache: &mut Cache),
     remove_all_cache: fn(inputs: &Vec<CacheIndex>, outputs: &Vec<CacheIndex>, cache: &mut Cache),
+    create_input_cache: fn(port: usize, cache: &mut Cache) -> Option<CacheIndex>,
     remove_input_cache: fn(port: usize, cache_index: CacheIndex, cache: &mut Cache),
-    create_input_cache: fn(port: usize, cache: &mut Cache) -> Option<CacheIndex>
 }
 
 impl Node {
     pub fn new(
         inputs: Vec<CacheIndex>,
         outputs: Vec<CacheIndex>,
-        compute: fn(inputs: &Vec<CacheIndex>, outputs: &Vec<CacheIndex>, cache: &mut Cache),
-        remove_all_cache: fn(inputs: &Vec<CacheIndex>, outputs: &Vec<CacheIndex>, cache: &mut Cache),
-        remove_input_cache: fn(port: usize, new_cache_index: CacheIndex, cache: &mut Cache),
-        create_input_cache: fn(port: usize, cache: &mut Cache) -> Option<CacheIndex>
+        remove_all_cache: fn(
+            inputs: &Vec<CacheIndex>,
+            outputs: &Vec<CacheIndex>,
+            cache: &mut Cache,
+        ),
     ) -> Self {
         Node {
             inputs,
             outputs,
-            compute,
+            compute: default_compute,
             remove_all_cache,
-            remove_input_cache,
-            create_input_cache
+            create_input_cache: default_create_input_cache,
+            remove_input_cache: default_remove_input_cache,
         }
     }
 
+    pub fn with_compute(
+        mut self,
+        compute_func: fn(inputs: &Vec<CacheIndex>, outputs: &Vec<CacheIndex>, cache: &mut Cache),
+    ) -> Self {
+        self.compute = compute_func;
+        self
+    }
+
+    pub fn with_create_remove_input_cache(
+        mut self,
+        create_input_cache_func: fn(port: usize, cache: &mut Cache) -> Option<CacheIndex>,
+        remove_input_cache_func: fn(port: usize, cache_index: CacheIndex, cache: &mut Cache),
+    ) -> Self {
+        self.create_input_cache = create_input_cache_func;
+        self.remove_input_cache = remove_input_cache_func;
+        self
+    }
+
     pub fn connect_input(&mut self, port: usize, new_cache_index: CacheIndex, cache: &mut Cache) {
+        // investigate replacing these functions with something that uses TypeId instead of "dynamic" functions
         let old_cache_index = self.inputs.remove(port);
         (self.remove_input_cache)(port, old_cache_index, cache);
         self.inputs.insert(port, new_cache_index);
@@ -37,7 +57,8 @@ impl Node {
 
     pub fn disconnect_input(&mut self, port: usize, cache: &mut Cache) {
         self.inputs.remove(port);
-        self.inputs.insert(port, (self.create_input_cache)(port, cache).unwrap());
+        self.inputs
+            .insert(port, (self.create_input_cache)(port, cache).unwrap());
     }
 
     pub fn get_output(&self, port: usize) -> Option<&CacheIndex> {
@@ -48,7 +69,11 @@ impl Node {
         (self.compute)(&self.inputs, &self.outputs, cache);
     }
 
-    pub fn remove_all_cache(&mut self, cache: &mut Cache) {
+    pub fn remove_all_cache(&mut self, cache: &mut Cache) {}
+}
 
-    }
+fn default_compute(inputs: &Vec<CacheIndex>, outputs: &Vec<CacheIndex>, cache: &mut Cache) {}
+fn default_remove_input_cache(port: usize, new_cache_index: CacheIndex, cache: &mut Cache) {}
+fn default_create_input_cache(port: usize, cache: &mut Cache) -> Option<CacheIndex> {
+    None
 }
