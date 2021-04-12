@@ -12,5 +12,4 @@ nalgebra = "0.25.4"
 
 [dependencies.druid]
 version = "0.7.0"
-features = ["im"]
 git = "https://github.com/linebender/druid"
