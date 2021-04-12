@@ -53,7 +53,13 @@ impl App {
 
     pub fn add_edge(&mut self, from_node: usize, from_port: usize, to_node: usize, to_port: usize) {
         let new_cache_index = self.nodes.get(from_node).unwrap().get_output(from_port).unwrap().clone();
-        self.nodes.get_mut(to_node).unwrap().connect_input(to_port, new_cache_index, &mut self.cache);
+        let node = self.nodes.get_mut(to_node).unwrap();
+        if self.edges.iter().any(|edge| {
+            edge.to_node == to_node && edge.to_port == to_port
+        }) {
+            node.disconnect_input(to_port, &mut self.cache);
+        }
+        node.connect_input(to_port, new_cache_index, &mut self.cache);
 
         let edge_type = if self
             .edges
