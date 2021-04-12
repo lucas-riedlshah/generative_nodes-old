@@ -2,12 +2,23 @@ use crate::core::{Cache, CacheIndex};
 
 #[derive(Clone)]
 pub struct Node {
+    /// Stores [CacheIndex]'s to all inputs(/internal values).
     inputs: Vec<CacheIndex>,
+    /// Stores [CacheIndex]'s to all outputs.
     outputs: Vec<CacheIndex>,
+    /** Modifies the [Cache].
+        Should generally get immutable references to inputs. The except being "internal" values (inputs which aren't exposed by the GUI).
+        Should alwawys get mutable references to outputs.
+        Called every frame.
+    */
     compute: fn(inputs: &Vec<CacheIndex>, outputs: &Vec<CacheIndex>, cache: &mut Cache),
+    /// Called when the node is about to be removed. Primary purpose is to remove any input/output values from the [Cache].
     remove_all_cache: fn(inputs: &Vec<CacheIndex>, outputs: &Vec<CacheIndex>, cache: &mut Cache),
     create_input_cache: fn(port: usize, cache: &mut Cache) -> Option<CacheIndex>,
     remove_input_cache: fn(port: usize, cache_index: CacheIndex, cache: &mut Cache),
+    // TODO: consider replacing the create/remove input cache funcs with complete disconnect/connect funcs.
+    /// Called when an input port is disconnected and so a new value must be created in the Cache.
+    /// Called when an input port is connected and so the current ("internal") value must be removed from the [Cache].
 }
 
 impl Node {
