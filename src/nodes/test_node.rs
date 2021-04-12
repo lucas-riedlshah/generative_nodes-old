@@ -21,14 +21,14 @@ fn compute(inputs: &Vec<CacheIndex>, outputs: &Vec<CacheIndex>, cache: &mut Cach
     println!("compute: {}", number);
 }
 
-fn remove_input_cache(port: usize, cache_index: CacheIndex, cache: &mut Cache) {
+fn remove_input_cache(node: &Node, port: usize, cache: &mut Cache) {
     match port {
-        0 | 1 | 2 => cache.remove::<String>(&cache_index),
+        0 | 1 | 2 => cache.remove::<String>(&node.get_inputs()[port]),
         _ => (),
     }
 }
 
-fn create_input_cache(port: usize, cache: &mut Cache) -> Option<CacheIndex> {
+fn create_input_cache(node: &Node, port: usize, cache: &mut Cache) -> Option<CacheIndex> {
     match port {
         0 => Some(cache.insert("input 0".to_owned())),
         1 => Some(cache.insert("input 1".to_owned())),
