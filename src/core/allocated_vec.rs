@@ -1,3 +1,6 @@
+use std::slice::{Iter, IterMut};
+
+#[derive(Clone)]
 pub struct AllocatedVec<T> {
     vec: Vec<Option<T>>,
     free: Vec<usize>,
@@ -55,5 +58,13 @@ impl<T> AllocatedVec<T> {
 
     pub fn len(&self) -> usize {
         self.vec.len() - self.free.len()
+    }
+
+    pub fn iter(&self) -> Iter<'_, Option<T>> {
+        self.vec.iter()
+    }
+
+    pub fn iter_mut(&mut self) -> IterMut<'_, Option<T>> {
+        self.vec.iter_mut()
     }
 }
