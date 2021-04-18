@@ -7,13 +7,12 @@ use std::{
 };
 
 use druid::{
-    kurbo::{Circle as KurboCircle, QuadBez},
-    BoxConstraints, Color, Command, ContextMenu, Env, Event, EventCtx, LayoutCtx, LifeCycle,
-    LifeCycleCtx, LocalizedString, MenuDesc, MenuItem, PaintCtx, Point, RenderContext, Selector,
-    Size, Target, TimerToken, UpdateCtx, Widget, WidgetPod,
+    kurbo::QuadBez, BoxConstraints, Color, Command, ContextMenu, Env, Event, EventCtx, LayoutCtx,
+    LifeCycle, LifeCycleCtx, LocalizedString, MenuDesc, MenuItem, PaintCtx, Point, RenderContext,
+    Selector, Size, Target, TimerToken, UpdateCtx, Widget, WidgetPod,
 };
 
-use crate::{core::App, nodes::common::shapes::Circle};
+use crate::core::App;
 
 use super::delegate::{ADD_NODE, ADD_NODE_WIDGET};
 
@@ -128,14 +127,9 @@ impl Widget<Rc<RefCell<App>>> for GraphWidget {
             Event::Timer(token) => {
                 if *token == self.render_timer_token {
                     let mut app = data.borrow_mut();
-
-                    // let time = Instant::now();
                     app.compute();
-                    // let duration = time.elapsed().as_micros();
-                    // println!("{}us", duration);
-
                     self.render_timer_token = ctx.request_timer(Duration::from_millis(30));
-                    ctx.request_paint();
+                    // ctx.request_paint();
                 }
             }
             Event::MouseDown(mouse) => {
