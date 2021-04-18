@@ -1,6 +1,5 @@
 use std::slice::{Iter, IterMut};
 
-#[derive(Clone)]
 pub struct AllocatedVec<T> {
     vec: Vec<Option<T>>,
     free: Vec<usize>,

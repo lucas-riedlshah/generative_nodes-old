@@ -1,6 +1,5 @@
 use crate::core::{Cache, CacheIndex};
 
-#[derive(Clone)]
 pub struct Node {
     /// Stores [CacheIndex]'s to all inputs(/internal values).
     inputs: Vec<CacheIndex>,

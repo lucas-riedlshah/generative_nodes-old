@@ -4,7 +4,6 @@ use anymap::AnyMap;
 
 use crate::core::AllocatedVec;
 
-#[derive(Clone)]
 pub struct CacheIndex {
     type_id: TypeId,
     index: usize,
