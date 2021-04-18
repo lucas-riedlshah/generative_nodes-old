@@ -7,6 +7,7 @@ use crate::core::AllocatedVec;
 pub struct CacheIndex {
     type_id: TypeId,
     index: usize,
+    can_mutate: bool
 }
 
 impl CacheIndex {
@@ -14,6 +15,7 @@ impl CacheIndex {
         CacheIndex {
             type_id: TypeId::of::<T>(),
             index,
+            can_mutate: true
         }
     }
 
@@ -23,6 +25,16 @@ impl CacheIndex {
 
     pub fn is_type<T: 'static>(&self) -> bool {
         self.type_id == TypeId::of::<T>()
+    }
+}
+
+impl Clone for CacheIndex {
+    fn clone(&self) -> CacheIndex {
+        CacheIndex {
+            type_id: self.type_id,
+            index: self.index,
+            can_mutate: false
+        }
     }
 }
 
