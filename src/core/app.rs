@@ -1,24 +1,26 @@
-use crate::core::{Cache, Node, AllocatedVec};
+use crate::core::{AllocatedVec, Cache, Node};
 
 /// Used to determine the compute order of nodes.
-enum EdgeType {
+#[derive(Clone)]
+pub enum EdgeType {
     Normal,
     Post,
 }
 
-struct Edge {
-    from_node: usize,
-    from_port: usize,
-    to_node: usize,
-    to_port: usize,
-    edge_type: EdgeType,
+#[derive(Clone)]
+pub struct Edge {
+    pub(crate) from_node: usize,
+    pub(crate) from_port: usize,
+    pub(crate) to_node: usize,
+    pub(crate) to_port: usize,
+    pub(crate) edge_type: EdgeType,
 }
 
 pub struct App {
     cache: Cache,
     nodes: AllocatedVec<Node>,
-    // from_node, from_port, to_node, to_port
     edges: Vec<Edge>,
+    factories: Vec<fn(&mut Cache) -> Node>,
 }
 
 impl App {
@@ -27,11 +29,18 @@ impl App {
             cache: Cache::new(),
             nodes: AllocatedVec::new(),
             edges: Vec::new(),
+            factories: Vec::new(),
         }
     }
 
-    pub fn add_node(&mut self, node_factory: fn(cache: &mut Cache) -> Node) -> usize {
-        self.nodes.push((node_factory)(&mut self.cache))
+    pub fn with_factories(mut self, factories: Vec<fn(&mut Cache) -> Node>) -> Self {
+        self.factories = factories;
+        self
+    }
+
+    pub fn add_node(&mut self, node_factory_index: usize) -> usize {
+        self.nodes
+            .push((self.factories[node_factory_index])(&mut self.cache))
     }
 
     pub fn remove_node(&mut self, node_index: usize) {
@@ -52,13 +61,24 @@ impl App {
     }
 
     pub fn add_edge(&mut self, from_node: usize, from_port: usize, to_node: usize, to_port: usize) {
-        let new_cache_index = self.nodes.get(from_node).unwrap().get_output(from_port).unwrap().clone();
+        let new_cache_index = self
+            .nodes
+            .get(from_node)
+            .unwrap()
+            .get_output(from_port)
+            .unwrap()
+            .clone();
         let node = self.nodes.get_mut(to_node).unwrap();
-        if self.edges.iter().any(|edge| {
-            edge.to_node == to_node && edge.to_port == to_port
-        }) {
+
+        if let Some(old_edge_index) = self
+            .edges
+            .iter()
+            .position(|edge| edge.to_node == to_node && edge.to_port == to_port)
+        {
+            let edge = self.edges.remove(old_edge_index);
             node.disconnect_input(to_port, &mut self.cache);
         }
+
         node.connect_input(to_port, new_cache_index, &mut self.cache);
 
         let edge_type = if self
@@ -109,6 +129,18 @@ impl App {
                 self.remove_edge(index);
             }
         }
+    }
+
+    pub fn edges(&self) -> &Vec<Edge> {
+        &self.edges
+    }
+
+    pub fn nodes(&self) -> &AllocatedVec<Node> {
+        &self.nodes
+    }
+
+    pub fn get_cache(&self) -> &Cache {
+        &self.cache
     }
 
     pub fn get_cache_mut(&mut self) -> &mut Cache {
