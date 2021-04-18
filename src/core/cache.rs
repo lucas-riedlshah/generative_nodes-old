@@ -2,16 +2,20 @@ use std::any::TypeId;
 
 use anymap::AnyMap;
 
+use crate::core::AllocatedVec;
+
 pub struct CacheIndex {
     type_id: TypeId,
     index: usize,
+    can_mutate: bool
 }
 
 impl CacheIndex {
-    pub fn new<T: Default + 'static>(index: usize) -> CacheIndex {
+    pub fn new<T: 'static>(index: usize) -> CacheIndex {
         CacheIndex {
             type_id: TypeId::of::<T>(),
             index,
+            can_mutate: true
         }
     }
 
@@ -19,8 +23,18 @@ impl CacheIndex {
         &self.index
     }
 
-    pub fn is_type<T: Default + 'static>(&self) -> bool {
+    pub fn is_type<T: 'static>(&self) -> bool {
         self.type_id == TypeId::of::<T>()
+    }
+}
+
+impl Clone for CacheIndex {
+    fn clone(&self) -> CacheIndex {
+        CacheIndex {
+            type_id: self.type_id,
+            index: self.index,
+            can_mutate: false
+        }
     }
 }
 
@@ -35,12 +49,12 @@ impl Cache {
         }
     }
 
-    pub fn register<T: Default + 'static>(&mut self) {
+    pub fn register<T: 'static>(&mut self) {
         self.data.insert(AllocatedVec::<T>::new());
     }
 
-    pub fn insert<T: Default + 'static>(&mut self, value: T) -> CacheIndex {
-        if !self.data.contains::<T>() {
+    pub fn insert<T: 'static>(&mut self, value: T) -> CacheIndex {
+        if !self.data.contains::<AllocatedVec<T>>() {
             self.register::<T>();
         }
         let vec = self.data.get_mut::<AllocatedVec<T>>().unwrap();
@@ -48,7 +62,7 @@ impl Cache {
         CacheIndex::new::<T>(vec.len() - 1)
     }
 
-    pub fn get<T: Default + 'static>(&self, cache_index: &CacheIndex) -> Option<&T> {
+    pub fn get<T: 'static>(&self, cache_index: &CacheIndex) -> Option<&T> {
         if cache_index.is_type::<T>() {
             if let Some(vec) = self.data.get::<AllocatedVec<T>>() {
                 return vec.get(*cache_index.index());
@@ -57,7 +71,7 @@ impl Cache {
         None
     }
 
-    pub fn get_mut<T: Default + 'static>(&mut self, cache_index: &CacheIndex) -> Option<&mut T> {
+    pub fn get_mut<T: 'static>(&mut self, cache_index: &CacheIndex) -> Option<&mut T> {
         if cache_index.is_type::<T>() {
             if let Some(vec) = self.data.get_mut::<AllocatedVec<T>>() {
                 return vec.get_mut(*cache_index.index());
@@ -66,66 +80,25 @@ impl Cache {
         None
     }
 
-    pub fn set<T: Default + 'static>(&mut self, cache_index: &CacheIndex, value: T) {
+    pub fn get_all_of_type<T: 'static>(&self) -> Option<&AllocatedVec<T>> {
+        self.data.get::<AllocatedVec<T>>()
+    }
+
+    pub fn set<T: 'static>(&mut self, cache_index: &CacheIndex, value: T) {
         if cache_index.is_type::<T>() {
             self.data
                 .get_mut::<AllocatedVec<T>>()
                 .unwrap()
-                .set(*cache_index.index(), value)
+                .set(*cache_index.index(), Some(value))
         }
     }
 
-    pub fn remove<T: Default + 'static>(&mut self, cache_index: &CacheIndex) {
+    pub fn remove<T: 'static>(&mut self, cache_index: &CacheIndex) {
         if cache_index.is_type::<T>() {
             self.data
                 .get_mut::<AllocatedVec<T>>()
                 .unwrap()
                 .remove(*cache_index.index());
         }
-    }
-}
-
-pub struct AllocatedVec<T> {
-    vec: Vec<T>,
-    free: Vec<usize>,
-}
-
-impl<T: Default> AllocatedVec<T> {
-    pub fn new() -> AllocatedVec<T> {
-        AllocatedVec {
-            vec: Vec::new(),
-            free: Vec::new(),
-        }
-    }
-
-    pub fn push(&mut self, value: T) {
-        match self.free.pop() {
-            Some(index) => self.set(index, value),
-            None => self.vec.push(value),
-        }
-    }
-
-    pub fn set(&mut self, index: usize, value: T) {
-        if index < self.vec.len() {
-            self.vec[index] = value;
-        }
-    }
-
-    pub fn get(&self, index: usize) -> Option<&T> {
-        self.vec.get(index)
-    }
-
-    pub fn get_mut(&mut self, index: usize) -> Option<&mut T> {
-        self.vec.get_mut(index)
-    }
-
-    pub fn remove(&mut self, index: usize) {
-        self.set(index, T::default());
-        self.free.push(index);
-        self.free.sort_unstable_by(|a, b| b.cmp(a));
-    }
-
-    pub fn len(&self) -> usize {
-        self.vec.len()
     }
 }

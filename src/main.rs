@@ -1,135 +1,22 @@
-use std::collections::HashMap;
-
-use druid::{
-    widget::{Checkbox, Container, CrossAxisAlignment, Flex, Label, Slider, TextBox},
-    AppLauncher, Color, PlatformError, Widget, WidgetExt, WindowDesc,
-};
-
 mod core;
 mod gui;
+mod nodes;
 
-use crate::core::{BoolInputLens, Cache, CacheIndex, FloatInputLens, Graph, Node, Packet, StringInputLens};
-use crate::gui::graph_widget::{Direction, GraphWidget, Port};
-use crate::gui::node_widget::NodeWidget;
-use crate::gui::port_widget::PortWidget;
+use std::{cell::RefCell, rc::Rc};
+
+use druid::{AppLauncher, PlatformError, WindowDesc};
+
+use crate::core::App;
+use crate::gui::delegate::Delegate;
+use crate::gui::graph_widget::GraphWidget;
 
 fn main() -> Result<(), PlatformError> {
-    let main_window = WindowDesc::new(ui_builder());
-    let mut data = Graph::new();
+    let app = App::new().with_factories(nodes::node_factories());
 
-    let mut id = data.get_nodes().len();
-
-    let mut inputs_2 = HashMap::new();
-    inputs_2.insert("bool", Packet::Bool(true));
-    inputs_2.insert("float", Packet::Float(50.));
-    inputs_2.insert("string", Packet::String("it work".to_string()));
-
-    let mut outputs_2 = HashMap::new();
-    outputs_2.insert("bool_out", Packet::Bool(false));
-
-    data.get_nodes_mut().push(Node::new(
-        inputs_2.clone(),
-        outputs_2.clone(),
-        id,
-        placeholder_generator_thing_2,
-    ));
-
-    id = data.get_nodes().len();
-
-    data.get_nodes_mut().push(Node::new(
-        inputs_2,
-        outputs_2,
-        id,
-        placeholder_generator_thing_2,
-    ));
-
-    let mut test_cache = Cache::new();
-
-    let mut cache_indices = Vec::<Box<CacheIndex>>::new();
-
-    cache_indices.push(Box::new(test_cache.insert(25.)));
-    cache_indices.push(Box::new(test_cache.insert(2.)));
-    cache_indices.push(Box::new(test_cache.insert("yoyo".to_owned())));
-
-    let cache_index = cache_indices.get(2).unwrap();
-
-    println!("{}", test_cache.get::<String>(cache_index).unwrap());
+    let main_window = WindowDesc::new(GraphWidget::new());
 
     AppLauncher::with_window(main_window)
-        .log_to_console()
-        .launch(data)
-}
-
-fn ui_builder() -> impl Widget<Graph> {
-    GraphWidget::new()
-    //.debug_paint_layout()
-}
-
-fn placeholder_generator_thing_2(data: &Node) -> Box<dyn Widget<Node>> {
-    Box::new(NodeWidget::new(
-        Container::new(
-            Flex::column()
-                .with_child(Label::new("Node Title 2"))
-                .with_spacer(5.)
-                .with_child(
-                    // Inputs
-                    Flex::column()
-                        .cross_axis_alignment(CrossAxisAlignment::Start)
-                        .with_child(
-                            Flex::row()
-                                .with_child(PortWidget::new(Port::new(
-                                    data.id(),
-                                    "string",
-                                    Direction::Input,
-                                )))
-                                .with_spacer(5.)
-                                .with_child(TextBox::new().lens(StringInputLens("string"))),
-                        )
-                        .with_spacer(5.)
-                        .with_child(
-                            Flex::row()
-                                .with_child(PortWidget::new(Port::new(
-                                    data.id(),
-                                    "float",
-                                    Direction::Input,
-                                )))
-                                .with_spacer(5.)
-                                .with_child(
-                                    Slider::new()
-                                        .with_range(-100., 100.)
-                                        .lens(FloatInputLens("float")),
-                                ),
-                        )
-                        .with_spacer(5.)
-                        .with_child(
-                            Flex::row()
-                                .with_child(PortWidget::new(Port::new(
-                                    data.id(),
-                                    "bool",
-                                    Direction::Input,
-                                )))
-                                .with_spacer(5.)
-                                .with_child(Checkbox::new("bool").lens(BoolInputLens("bool"))),
-                        )
-                        .expand_width(),
-                )
-                .with_spacer(5.)
-                .with_child(
-                    // Outputs
-                    Flex::column()
-                        .cross_axis_alignment(CrossAxisAlignment::End)
-                        .with_child(PortWidget::new(Port::new(
-                            data.id(),
-                            "bool_out",
-                            Direction::Output,
-                        )))
-                        .expand_width(),
-                )
-                .fix_width(150.)
-                .padding(5.),
-        )
-        .rounded(10.)
-        .background(Color::rgba8(50, 50, 50, 230))
-        .border(Color::rgb8(25, 25, 25), 1.),
-    ))
+        .delegate(Delegate::new(nodes::node_widget_factories()))
+        // .log_to_console()
+        .launch(Rc::new(RefCell::new(app)))
 }

@@ -1,126 +1,102 @@
-use std::collections::HashMap;
-use std::sync::Arc;
+use crate::core::{Cache, CacheIndex};
 
-use druid::{Data, Lens, Widget};
-#[derive(Clone, Data)]
-pub enum Packet {
-    Float(f64),
-    Bool(bool),
-    String(String),
-}
-
-#[derive(Clone)]
 pub struct Node {
-    inputs: Arc<HashMap<&'static str, Packet>>,
-    outputs: Arc<HashMap<&'static str, Packet>>,
-    id: usize,
-    generate_widget: fn(data: &Node) -> Box<dyn Widget<Node>>,
+    // TODO: flatten inputs and outputs into one vec.
+    /// Stores [CacheIndex]'s to all inputs(/internal values).
+    inputs: Vec<CacheIndex>,
+    /// Stores [CacheIndex]'s to all outputs.
+    outputs: Vec<CacheIndex>,
+    /** Modifies the [Cache].
+        Should generally get immutable references to inputs. The except being "internal" values (inputs which aren't exposed by the GUI).
+        Should alwawys get mutable references to outputs.
+        Called every frame.
+    */
+    compute: Option<fn(inputs: &Vec<CacheIndex>, outputs: &Vec<CacheIndex>, cache: &mut Cache)>,
+    /// Called when the node is about to be removed. Primary purpose is to remove any input/output values from the [Cache].
+    remove_all_cache: fn(inputs: &Vec<CacheIndex>, outputs: &Vec<CacheIndex>, cache: &mut Cache),
+    // TODO: consider replacing the create/remove input cache funcs with complete disconnect/connect funcs.
+    /// Called when an input port is disconnected and so a new value must be created in the Cache.
+    disconnect: Option<fn(node: &Node, port: usize, cache: &mut Cache) -> Option<CacheIndex>>,
+    /// Called when an input port is connected and so the current ("internal") value must be removed from the [Cache].
+    connect: Option<fn(node: &Node, port: usize, cache: &mut Cache)>,
 }
 
 impl Node {
     pub fn new(
-        inputs: HashMap<&'static str, Packet>,
-        outputs: HashMap<&'static str, Packet>,
-        id: usize,
-        generate_widget: fn(data: &Node) -> Box<dyn Widget<Node>>,
+        inputs: Vec<CacheIndex>,
+        outputs: Vec<CacheIndex>,
+        remove_all_cache: fn(
+            inputs: &Vec<CacheIndex>,
+            outputs: &Vec<CacheIndex>,
+            cache: &mut Cache,
+        ),
     ) -> Self {
         Node {
-            inputs: Arc::new(inputs),
-            outputs: Arc::new(outputs),
-            id,
-            generate_widget,
+            inputs,
+            outputs,
+            compute: None,
+            remove_all_cache,
+            disconnect: None,
+            connect: None,
         }
     }
 
-    pub fn id(&self) -> usize {
-        self.id.clone()
+    pub fn with_compute(
+        mut self,
+        compute_func: fn(inputs: &Vec<CacheIndex>, outputs: &Vec<CacheIndex>, cache: &mut Cache),
+    ) -> Self {
+        self.compute = Some(compute_func);
+        self
     }
-    pub fn generate_widget(&self) -> Box<dyn Widget<Node>> {
-        (self.generate_widget)(&self)
+
+    pub fn with_create_remove_input_cache(
+        mut self,
+        create_input_cache_func: fn(
+            node: &Node,
+            port: usize,
+            cache: &mut Cache,
+        ) -> Option<CacheIndex>,
+        remove_input_cache_func: fn(node: &Node, port: usize, cache: &mut Cache),
+    ) -> Self {
+        self.disconnect = Some(create_input_cache_func);
+        self.connect = Some(remove_input_cache_func);
+        self
     }
-}
 
-impl Data for Node {
-    fn same(&self, other: &Self) -> bool {
-        self.inputs.same(&other.inputs) && self.outputs.same(&other.outputs)
+    pub fn connect_input(&mut self, port: usize, new_cache_index: CacheIndex, cache: &mut Cache) {
+        if let Some(func) = self.connect {
+            (func)(&self, port, cache);
+        }
+        *self.inputs.get_mut(port).unwrap() = new_cache_index;
     }
-}
 
-// The following lenses need to be replaced with a macro on the enum I think.
-pub struct FloatInputLens(pub &'static str);
-
-impl Lens<Node, f64> for FloatInputLens {
-    fn with<R, F: FnOnce(&f64) -> R>(&self, data: &Node, f: F) -> R {
-        let input = data.inputs.get(&self.0).cloned().unwrap();
-        match input {
-            Packet::Float(value) => f(&value),
-            _ => panic!("input was not a Float"),
+    pub fn disconnect_input(&mut self, port: usize, cache: &mut Cache) {
+        self.inputs.remove(port);
+        if let Some(func) = self.disconnect {
+            self.inputs
+                .insert(port, (func)(&self, port, cache).unwrap());
         }
     }
 
-    fn with_mut<R, F: FnOnce(&mut f64) -> R>(&self, data: &mut Node, f: F) -> R {
-        let mut input = match data.inputs.get(&self.0).cloned().unwrap() {
-            Packet::Float(value) => value,
-            _ => panic!("input was not a Float"),
-        };
-        let old = input.clone();
-        let result = f(&mut input);
-        let changed = !input.same(&old);
-        if changed {
-            Arc::make_mut(&mut data.inputs).insert(self.0, Packet::Float(input));
-        }
-        result
+    pub fn get_output(&self, port: usize) -> Option<&CacheIndex> {
+        self.outputs.get(port)
     }
-}
 
-pub struct StringInputLens(pub &'static str);
+    pub fn get_inputs(&self) -> &Vec<CacheIndex> {
+        &self.inputs
+    }
 
-impl Lens<Node, String> for StringInputLens {
-    fn with<R, F: FnOnce(&String) -> R>(&self, data: &Node, f: F) -> R {
-        let input = data.inputs.get(&self.0).cloned().unwrap();
-        match input {
-            Packet::String(value) => f(&value),
-            _ => panic!("input was not a Float"),
+    pub fn get_outputs(&self) -> &Vec<CacheIndex> {
+        &self.outputs
+    }
+
+    pub fn compute(&self, cache: &mut Cache) {
+        if let Some(func) = self.compute {
+            (func)(&self.inputs, &self.outputs, cache);
         }
     }
 
-    fn with_mut<R, F: FnOnce(&mut String) -> R>(&self, data: &mut Node, f: F) -> R {
-        let mut input = match data.inputs.get(&self.0).cloned().unwrap() {
-            Packet::String(value) => value,
-            _ => panic!("input was not a Float"),
-        };
-        let old = input.clone();
-        let result = f(&mut input);
-        let changed = !input.same(&old);
-        if changed {
-            Arc::make_mut(&mut data.inputs).insert(self.0, Packet::String(input));
-        }
-        result
-    }
-}
-
-pub struct BoolInputLens(pub &'static str);
-
-impl Lens<Node, bool> for BoolInputLens {
-    fn with<R, F: FnOnce(&bool) -> R>(&self, data: &Node, f: F) -> R {
-        let input = data.inputs.get(&self.0).cloned().unwrap();
-        match input {
-            Packet::Bool(value) => f(&value),
-            _ => panic!("input was not a Float"),
-        }
-    }
-
-    fn with_mut<R, F: FnOnce(&mut bool) -> R>(&self, data: &mut Node, f: F) -> R {
-        let mut input = match data.inputs.get(&self.0).cloned().unwrap() {
-            Packet::Bool(value) => value,
-            _ => panic!("input was not a Float"),
-        };
-        let old = input.clone();
-        let result = f(&mut input);
-        let changed = !input.same(&old);
-        if changed {
-            Arc::make_mut(&mut data.inputs).insert(self.0, Packet::Bool(input));
-        }
-        result
+    pub fn remove_all_cache(&mut self, cache: &mut Cache) {
+        (self.remove_all_cache)(&self.inputs, &self.outputs, cache);
     }
 }
