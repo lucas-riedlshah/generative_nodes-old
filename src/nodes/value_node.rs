@@ -39,7 +39,12 @@ pub fn widget_factory(index: usize) -> Box<dyn Widget<Rc<RefCell<App>>>> {
                             Flex::row()
                                 .with_child(Label::new("Value"))
                                 .with_spacer(5.)
-                                .with_child(PortWidget::new(index, 0, PortDirection::Output)),
+                                .with_child(PortWidget::new(
+                                    index,
+                                    0,
+                                    PortDirection::Output,
+                                    PortWidget::F64,
+                                )),
                         )
                         .with_spacer(5.)
                         .expand_width(),

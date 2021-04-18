@@ -12,15 +12,23 @@ pub struct PortWidget {
     node: usize,
     port: usize,
     direction: PortDirection,
+    color: Color,
     timer_id: TimerToken,
 }
 
 impl PortWidget {
-    pub fn new(node: usize, port: usize, direction: PortDirection) -> PortWidget {
+    // Port Colors
+    pub const F64: Color = Color::rgb8(102, 140, 74);
+    pub const VECTOR2F64: Color = Color::rgb8(191, 191, 75);
+    pub const SHAPE: Color = Color::rgb8(114, 94, 242);
+    pub const PARTICLE: Color = Color::rgb8(191, 59, 59);
+
+    pub fn new(node: usize, port: usize, direction: PortDirection, color: Color) -> PortWidget {
         PortWidget {
             node,
             port,
             direction,
+            color,
             timer_id: TimerToken::INVALID,
         }
     }
@@ -79,7 +87,7 @@ impl<T> Widget<T> for PortWidget {
     fn paint(&mut self, ctx: &mut PaintCtx, _data: &T, _env: &Env) {
         ctx.fill(
             Circle::new(Point::new(RADIUS, RADIUS), RADIUS),
-            &Color::rgb8(200, 50, 150),
+            &self.color,
         );
     }
 }

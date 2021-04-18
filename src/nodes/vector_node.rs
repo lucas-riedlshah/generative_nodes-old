@@ -68,7 +68,7 @@ pub fn widget_factory(index: usize) -> Box<dyn Widget<Rc<RefCell<App>>>> {
                         .cross_axis_alignment(CrossAxisAlignment::Start)
                         .with_child(
                             Flex::row()
-                                .with_child(PortWidget::new(index, 0, PortDirection::Input))
+                                .with_child(PortWidget::new(index, 0, PortDirection::Input, PortWidget::F64))
                                 .with_spacer(5.)
                                 // .with_child(TextBox::new().lens(StringInputLens("string"))),
                                 .with_child(Label::new("X")),
@@ -76,7 +76,7 @@ pub fn widget_factory(index: usize) -> Box<dyn Widget<Rc<RefCell<App>>>> {
                         .with_spacer(5.)
                         .with_child(
                             Flex::row()
-                                .with_child(PortWidget::new(index, 1, PortDirection::Input))
+                                .with_child(PortWidget::new(index, 1, PortDirection::Input, PortWidget::F64))
                                 .with_spacer(5.)
                                 // .with_child(TextBox::new().lens(StringInputLens("string"))),
                                 .with_child(Label::new("Y")),
@@ -92,7 +92,7 @@ pub fn widget_factory(index: usize) -> Box<dyn Widget<Rc<RefCell<App>>>> {
                             Flex::row()
                                 .with_child(Label::new("Vector2"))
                                 .with_spacer(5.)
-                                .with_child(PortWidget::new(index, 0, PortDirection::Output)),
+                                .with_child(PortWidget::new(index, 0, PortDirection::Output, PortWidget::VECTOR2F64)),
                         )
                         .with_spacer(5.)
                         .expand_width(),

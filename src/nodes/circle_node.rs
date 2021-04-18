@@ -77,7 +77,7 @@ pub fn widget_factory(index: usize) -> Box<dyn Widget<Rc<RefCell<App>>>> {
                         .cross_axis_alignment(CrossAxisAlignment::Start)
                         .with_child(
                             Flex::row()
-                                .with_child(PortWidget::new(index, POSITION, PortDirection::Input))
+                                .with_child(PortWidget::new(index, POSITION, PortDirection::Input, PortWidget::VECTOR2F64))
                                 .with_spacer(5.)
                                 // .with_child(TextBox::new().lens(StringInputLens("string"))),
                                 .with_child(Label::new("Position")),
@@ -85,7 +85,7 @@ pub fn widget_factory(index: usize) -> Box<dyn Widget<Rc<RefCell<App>>>> {
                         .with_spacer(5.)
                         .with_child(
                             Flex::row()
-                                .with_child(PortWidget::new(index, RADIUS, PortDirection::Input))
+                                .with_child(PortWidget::new(index, RADIUS, PortDirection::Input, PortWidget::F64))
                                 .with_spacer(5.)
                                 // .with_child(TextBox::new().lens(StringInputLens("string"))),
                                 .with_child(Label::new("Radius")),
@@ -101,7 +101,7 @@ pub fn widget_factory(index: usize) -> Box<dyn Widget<Rc<RefCell<App>>>> {
                             Flex::row()
                                 .with_child(Label::new("Circle"))
                                 .with_spacer(5.)
-                                .with_child(PortWidget::new(index, CIRCLE, PortDirection::Output)),
+                                .with_child(PortWidget::new(index, CIRCLE, PortDirection::Output, PortWidget::SHAPE)),
                         )
                         .with_spacer(5.)
                         .expand_width(),

@@ -194,7 +194,12 @@ pub fn widget_factory(index: usize) -> Box<dyn Widget<Rc<RefCell<App>>>> {
                         .cross_axis_alignment(CrossAxisAlignment::Start)
                         .with_child(
                             Flex::row()
-                                .with_child(PortWidget::new(index, MASS, PortDirection::Input))
+                                .with_child(PortWidget::new(
+                                    index,
+                                    MASS,
+                                    PortDirection::Input,
+                                    PortWidget::F64,
+                                ))
                                 .with_spacer(5.)
                                 // .with_child(TextBox::new().lens(StringInputLens("string"))),
                                 .with_child(Label::new("Mass")),
@@ -202,7 +207,12 @@ pub fn widget_factory(index: usize) -> Box<dyn Widget<Rc<RefCell<App>>>> {
                         .with_spacer(5.)
                         .with_child(
                             Flex::row()
-                                .with_child(PortWidget::new(index, FORCE, PortDirection::Input))
+                                .with_child(PortWidget::new(
+                                    index,
+                                    FORCE,
+                                    PortDirection::Input,
+                                    PortWidget::VECTOR2F64,
+                                ))
                                 .with_spacer(5.)
                                 // .with_child(TextBox::new().lens(StringInputLens("string"))),
                                 .with_child(Label::new("Force")),
@@ -214,6 +224,7 @@ pub fn widget_factory(index: usize) -> Box<dyn Widget<Rc<RefCell<App>>>> {
                                     index,
                                     SET_POSITION,
                                     PortDirection::Input,
+                                    PortWidget::VECTOR2F64,
                                 ))
                                 .with_spacer(5.)
                                 // .with_child(TextBox::new().lens(StringInputLens("string"))),
@@ -226,6 +237,7 @@ pub fn widget_factory(index: usize) -> Box<dyn Widget<Rc<RefCell<App>>>> {
                                     index,
                                     SET_VELOCITY,
                                     PortDirection::Input,
+                                    PortWidget::VECTOR2F64,
                                 ))
                                 .with_spacer(5.)
                                 // .with_child(TextBox::new().lens(StringInputLens("string"))),
@@ -238,6 +250,7 @@ pub fn widget_factory(index: usize) -> Box<dyn Widget<Rc<RefCell<App>>>> {
                                     index,
                                     SET_ACCELERATION,
                                     PortDirection::Input,
+                                    PortWidget::VECTOR2F64,
                                 ))
                                 .with_spacer(5.)
                                 // .with_child(TextBox::new().lens(StringInputLens("string"))),
@@ -258,6 +271,7 @@ pub fn widget_factory(index: usize) -> Box<dyn Widget<Rc<RefCell<App>>>> {
                                     index,
                                     PARTICLE,
                                     PortDirection::Output,
+                                    PortWidget::PARTICLE,
                                 )),
                         )
                         .with_spacer(5.)
@@ -269,6 +283,7 @@ pub fn widget_factory(index: usize) -> Box<dyn Widget<Rc<RefCell<App>>>> {
                                     index,
                                     ACCELERATION,
                                     PortDirection::Output,
+                                    PortWidget::VECTOR2F64,
                                 )),
                         )
                         .with_spacer(5.)
@@ -280,6 +295,7 @@ pub fn widget_factory(index: usize) -> Box<dyn Widget<Rc<RefCell<App>>>> {
                                     index,
                                     VELOCITY,
                                     PortDirection::Output,
+                                    PortWidget::VECTOR2F64,
                                 )),
                         )
                         .with_spacer(5.)
@@ -291,6 +307,7 @@ pub fn widget_factory(index: usize) -> Box<dyn Widget<Rc<RefCell<App>>>> {
                                     index,
                                     POSITION,
                                     PortDirection::Output,
+                                    PortWidget::VECTOR2F64,
                                 )),
                         )
                         .expand_width(),
