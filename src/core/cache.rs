@@ -80,6 +80,10 @@ impl Cache {
         None
     }
 
+    pub fn get_all_of_type<T: 'static>(&self) -> Option<&AllocatedVec<T>> {
+        self.data.get::<AllocatedVec<T>>()
+    }
+
     pub fn set<T: 'static>(&mut self, cache_index: &CacheIndex, value: T) {
         if cache_index.is_type::<T>() {
             self.data
