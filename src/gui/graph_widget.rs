@@ -1,49 +1,39 @@
-use std::{cmp::Ordering, ops::Add, time::Instant};
-
-use druid::{
-    kurbo::QuadBez, BoxConstraints, Color, Command, ContextMenu, Env, Event, EventCtx, LayoutCtx,
-    LifeCycle, LifeCycleCtx, LocalizedString, MenuDesc, MenuItem, PaintCtx, Point, RenderContext,
-    Selector, Size, Target, UpdateCtx, Widget, WidgetPod,
+use std::{
+    cell::RefCell,
+    collections::HashMap,
+    ops::Add,
+    rc::Rc,
+    time::{Duration, Instant},
 };
 
-use crate::core::Graph;
-use crate::core::Node;
+use druid::{
+    kurbo::{Circle as KurboCircle, QuadBez},
+    BoxConstraints, Color, Command, ContextMenu, Env, Event, EventCtx, LayoutCtx, LifeCycle,
+    LifeCycleCtx, LocalizedString, MenuDesc, MenuItem, PaintCtx, Point, RenderContext, Selector,
+    Size, Target, TimerToken, UpdateCtx, Widget, WidgetPod,
+};
 
-// These will need to be moved to a delegate when GraphWidget is no longer the root of the application.
-const ADD_NODE: Selector<f64> = Selector::<f64>::new("add_node");
-pub const ADD_EDGE: Selector<(Port, Point)> = Selector::<(Port, Point)>::new("begin_edge");
+use crate::{core::App, nodes::common::shapes::Circle};
 
-#[derive(PartialEq, Copy, Clone)]
-pub enum Direction {
+use super::delegate::{ADD_NODE, ADD_NODE_WIDGET};
+
+pub const REGISTER_PORT_LOCATION: Selector<(usize, usize, PortDirection, Point)> =
+    Selector::new("register_port_location");
+
+#[derive(Clone, Copy)]
+pub enum PortDirection {
     Input,
     Output,
 }
 
-#[derive(PartialEq, Copy, Clone)]
-pub struct Port {
-    node_id: usize,
-    port_name: &'static str,
-    direction: Direction,
-}
-
-impl Port {
-    pub fn new(node_id: usize, port_name: &'static str, direction: Direction) -> Port {
-        Port {
-            node_id,
-            port_name,
-            direction,
-        }
-    }
-}
-
 struct GraphWidgetNode {
-    widget: WidgetPod<Node, Box<dyn Widget<Node>>>,
+    widget: WidgetPod<Rc<RefCell<App>>, Box<dyn Widget<Rc<RefCell<App>>>>>,
     position: Point,
     is_selected: bool,
 }
 
 impl GraphWidgetNode {
-    fn new<W: Widget<Node> + 'static>(widget: W) -> Self {
+    fn new<W: Widget<Rc<RefCell<App>>> + 'static>(widget: W) -> Self {
         GraphWidgetNode {
             widget: WidgetPod::new(Box::new(widget)),
             position: Point::new(5., 5.),
@@ -53,48 +43,27 @@ impl GraphWidgetNode {
 }
 
 pub struct GraphWidget {
-    nodes: Vec<GraphWidgetNode>,
+    nodes: Vec<GraphWidgetNode>, // TODO: Will need to replace with AllocatedVec so that the indexes match if nodes are removed.
     // maybe replace edges with their own widgets so that they can be selected and stuff.
-    edges: Vec<(Point, Point)>,
+    port_locations: HashMap<usize, (HashMap<usize, Point>, HashMap<usize, Point>)>,
     node_render_order: Vec<usize>,
     is_translating_nodes: bool,
-    creating_new_edge: bool,
-    current_edge_end: Option<(Port, Point)>,
     last_mouse_pos: Point,
     last_layout_instant: Instant,
+    render_timer_token: TimerToken, // TODO: Remove this and put it on the node that will actually render the frames.
 }
 
 impl GraphWidget {
     pub fn new() -> Self {
         GraphWidget {
             nodes: Vec::new(),
-            edges: Vec::new(),
+            port_locations: HashMap::new(),
             node_render_order: Vec::new(),
             is_translating_nodes: false,
-            creating_new_edge: false,
-            current_edge_end: None,
             last_mouse_pos: Point::ZERO,
             last_layout_instant: Instant::now(),
+            render_timer_token: TimerToken::INVALID,
         }
-    }
-
-    // This might need to be replaced.
-    fn update_child_count(&mut self, data: &Graph, _env: &Env) -> bool {
-        let len = self.nodes.len();
-        match len.cmp(&data.get_nodes().len()) {
-            Ordering::Greater => self.nodes.truncate(data.get_nodes().len()),
-            Ordering::Less => {
-                for (node_data, i) in data.get_nodes().iter().zip(0..data.get_nodes().len()) {
-                    if i >= len {
-                        let node = GraphWidgetNode::new(node_data.generate_widget());
-                        self.node_render_order.push(self.nodes.len());
-                        self.nodes.push(node);
-                    }
-                }
-            }
-            Ordering::Equal => (),
-        }
-        len != data.get_nodes().len()
     }
 
     fn deselect_all_nodes(&mut self, ctx: &mut EventCtx) {
@@ -102,7 +71,7 @@ impl GraphWidget {
             node.is_selected = false;
             ctx.submit_command(Command::new(
                 Selector::<bool>::new("update_selected"),
-                node.is_selected.clone(), // does this need to be cloned?
+                node.is_selected,
                 Target::Widget(node.widget.id()),
             ));
         });
@@ -120,56 +89,53 @@ impl GraphWidget {
     }
 }
 
-impl Widget<Graph> for GraphWidget {
-    fn event(&mut self, ctx: &mut EventCtx, event: &Event, data: &mut Graph, env: &Env) {
+impl Widget<Rc<RefCell<App>>> for GraphWidget {
+    fn event(&mut self, ctx: &mut EventCtx, event: &Event, data: &mut Rc<RefCell<App>>, env: &Env) {
         for node_index in self.node_render_order.iter().rev() {
             let node = self.nodes.get_mut(*node_index).unwrap();
-            let node_data = data.get_nodes_mut().get_mut(*node_index).unwrap();
-            node.widget.event(ctx, event, node_data, env);
+            node.widget.event(ctx, event, data, env);
         }
 
         match event {
-            Event::Command(command) if command.is(ADD_NODE) => {
-                println!("{}", command.get(ADD_NODE).unwrap());
-            }
-            Event::Notification(notification) => {
-                if notification.is(ADD_EDGE) {
-                    if let Some(edge_end) = notification.get(ADD_EDGE) {
-                        match self.current_edge_end {
-                            Some(first_edge_end) => {
-                                if first_edge_end.0 != edge_end.0 {
-                                    // Both nodes need to say yes this is okay.
-                                    // Need to check if the edge already exists.
-                                    data.get_edges_mut().push((
-                                        first_edge_end.0.node_id,
-                                        first_edge_end.0.port_name,
-                                        edge_end.0.node_id,
-                                        edge_end.0.port_name,
-                                    ));
-                                    // may need to also subtract graph widget position of this later if graph widget ends up not being the root widget.
-                                    let p0 = (first_edge_end.1
-                                        - self
-                                            .nodes
-                                            .get(first_edge_end.0.node_id)
-                                            .unwrap()
-                                            .position)
-                                        .to_point();
-                                    let p1 = (edge_end.1
-                                        - self.nodes.get(edge_end.0.node_id).unwrap().position)
-                                        .to_point();
-                                    self.edges.push((p0, p1))
-                                }
-                                self.creating_new_edge = false;
-                                self.current_edge_end = None;
-                                ctx.request_paint();
-                            }
-                            None => {
-                                self.creating_new_edge = true;
-                                self.current_edge_end = Some(edge_end.clone());
-                            }
+            Event::Command(command) => {
+                if command.is(ADD_NODE_WIDGET) {
+                    let (index, func) = command.get(ADD_NODE_WIDGET).unwrap();
+                    let node = GraphWidgetNode::new(func(*index));
+                    self.node_render_order.push(self.nodes.len());
+                    self.nodes.push(node);
+                    ctx.children_changed();
+                }
+                if command.is(REGISTER_PORT_LOCATION) {
+                    let (node, port, direction, position) =
+                        command.get(REGISTER_PORT_LOCATION).unwrap();
+
+                    let (inputs, outputs) = match self.port_locations.get_mut(node) {
+                        Some(node_ports) => node_ports,
+                        None => {
+                            self.port_locations
+                                .insert(*node, (HashMap::new(), HashMap::new()));
+                            self.port_locations.get_mut(node).unwrap()
                         }
-                    }
-                    ctx.set_handled();
+                    };
+
+                    (match direction {
+                        PortDirection::Input => inputs,
+                        PortDirection::Output => outputs,
+                    })
+                    .insert(*port, (*position - self.nodes[*node].position).to_point());
+                }
+            }
+            Event::Timer(token) => {
+                if *token == self.render_timer_token {
+                    let mut app = data.borrow_mut();
+
+                    // let time = Instant::now();
+                    app.compute();
+                    // let duration = time.elapsed().as_micros();
+                    // println!("{}us", duration);
+
+                    self.render_timer_token = ctx.request_timer(Duration::from_millis(30));
+                    ctx.request_paint();
                 }
             }
             Event::MouseDown(mouse) => {
@@ -221,10 +187,10 @@ impl Widget<Graph> for GraphWidget {
                 self.is_translating_nodes = false;
                 if mouse.button.is_right() {
                     ctx.show_context_menu(ContextMenu::new(
-                        MenuDesc::<Graph>::new(LocalizedString::new("Add node")).append(
+                        MenuDesc::<Rc<RefCell<App>>>::new(LocalizedString::new("Add Node")).append(
                             MenuItem::new(
-                                LocalizedString::new("Node Type 1"),
-                                Command::new(ADD_NODE, 69., Target::Widget(ctx.widget_id())),
+                                LocalizedString::new("Particle"),
+                                Command::new(ADD_NODE, 0, Target::Widget(ctx.widget_id())),
                             ),
                         ),
                         mouse.pos,
@@ -249,36 +215,32 @@ impl Widget<Graph> for GraphWidget {
         }
     }
 
-    fn lifecycle(&mut self, ctx: &mut LifeCycleCtx, event: &LifeCycle, data: &Graph, env: &Env) {
+    fn lifecycle(
+        &mut self,
+        ctx: &mut LifeCycleCtx,
+        event: &LifeCycle,
+        data: &Rc<RefCell<App>>,
+        env: &Env,
+    ) {
         if let LifeCycle::WidgetAdded = event {
-            if self.update_child_count(data, env) {
-                ctx.children_changed();
-            }
+            self.render_timer_token = ctx.request_timer(Duration::from_secs(1));
         }
-
         for node_index in &self.node_render_order {
             let node = self.nodes.get_mut(*node_index).unwrap();
-            let node_data = data.get_nodes().get(*node_index).unwrap();
-            node.widget.lifecycle(ctx, event, node_data, env);
+            node.widget.lifecycle(ctx, event, data, env);
         }
     }
 
-    fn update(&mut self, ctx: &mut UpdateCtx, _old_data: &Graph, data: &Graph, env: &Env) {
+    fn update(
+        &mut self,
+        ctx: &mut UpdateCtx,
+        _old_data: &Rc<RefCell<App>>,
+        data: &Rc<RefCell<App>>,
+        env: &Env,
+    ) {
         for node_index in &self.node_render_order {
             let node = self.nodes.get_mut(*node_index).unwrap();
-            let node_data = data.get_nodes().get(*node_index).unwrap();
-            node.widget.update(ctx, node_data, env);
-        }
-
-        let mut nodes = self.nodes.iter_mut();
-        for node_data in data.get_nodes() {
-            if let Some(node) = nodes.next() {
-                node.widget.update(ctx, node_data, env);
-            }
-        }
-
-        if self.update_child_count(data, env) {
-            ctx.children_changed();
+            node.widget.update(ctx, data, env);
         }
     }
 
@@ -286,37 +248,41 @@ impl Widget<Graph> for GraphWidget {
         &mut self,
         ctx: &mut LayoutCtx,
         bc: &BoxConstraints,
-        data: &Graph,
+        data: &Rc<RefCell<App>>,
         env: &Env,
     ) -> Size {
         let child_box_constraints = BoxConstraints::new(Size::ZERO, Size::new(1000., 1000.));
         for node_index in &self.node_render_order {
             let node = self.nodes.get_mut(*node_index).unwrap();
-            let node_data = data.get_nodes().get(*node_index).unwrap();
-            node.widget
-                .layout(ctx, &child_box_constraints, node_data, env);
-            node.widget.set_origin(ctx, node_data, env, node.position);
+            node.widget.layout(ctx, &child_box_constraints, data, env);
+            node.widget.set_origin(ctx, data, env, node.position);
         }
 
         self.last_layout_instant = Instant::now();
         bc.max()
     }
 
-    fn paint(&mut self, ctx: &mut PaintCtx, data: &Graph, env: &Env) {
+    fn paint(&mut self, ctx: &mut PaintCtx, data: &Rc<RefCell<App>>, env: &Env) {
         let clip_rect = ctx.size().to_rect();
         ctx.fill(clip_rect, &Color::rgb8(15, 15, 15));
 
-        for ((start_relative, end_relative), (start_node_index, _, end_node_index, _)) in
-            self.edges.iter().zip(data.get_edges())
-        {
-            let start = *start_relative
-                + self
-                    .nodes
-                    .get(*start_node_index)
-                    .unwrap()
-                    .position
-                    .to_vec2();
-            let end = *end_relative + self.nodes.get(*end_node_index).unwrap().position.to_vec2();
+        for edge in data.borrow().edges() {
+            let start = *self
+                .port_locations
+                .get(&edge.from_node)
+                .unwrap()
+                .1 // outputs
+                .get(&edge.from_port)
+                .unwrap()
+                + self.nodes.get(edge.from_node).unwrap().position.to_vec2();
+            let end = *self
+                .port_locations
+                .get(&edge.to_node)
+                .unwrap()
+                .0 // inputs
+                .get(&edge.to_port)
+                .unwrap()
+                + self.nodes.get(edge.to_node).unwrap().position.to_vec2();
             let path = QuadBez::new(
                 start,
                 // need to figure out a cheaper way to droop the cables. Or maybe not?
@@ -328,7 +294,6 @@ impl Widget<Graph> for GraphWidget {
 
         for node_index in &self.node_render_order {
             let node = self.nodes.get_mut(*node_index).unwrap();
-            let node_data = data.get_nodes().get(*node_index).unwrap();
             if node.is_selected {
                 let node_rect = node.widget.layout_rect();
                 ctx.stroke(
@@ -337,7 +302,7 @@ impl Widget<Graph> for GraphWidget {
                     1.,
                 );
             }
-            node.widget.paint(ctx, node_data, env);
+            node.widget.paint(ctx, data, env);
         }
     }
 }
