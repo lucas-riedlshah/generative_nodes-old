@@ -1,5 +1,3 @@
-use std::ops::Mul;
-
 use nalgebra::Vector2;
 
 pub struct Particle {
