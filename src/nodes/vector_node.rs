@@ -25,7 +25,7 @@ pub fn node_factory(cache: &mut Cache) -> Node {
 
     Node::new(inputs, outputs, remove_all_cache)
         .with_compute(compute)
-        .with_create_remove_input_cache(create_input_cache, remove_input_cache)
+        .with_create_remove_input_cache(disconnect, connect)
 }
 
 fn compute(inputs: &Vec<CacheIndex>, outputs: &Vec<CacheIndex>, cache: &mut Cache) {
@@ -35,14 +35,14 @@ fn compute(inputs: &Vec<CacheIndex>, outputs: &Vec<CacheIndex>, cache: &mut Cach
         cache.get::<f64>(&inputs[1]).unwrap().clone();
 }
 
-fn remove_input_cache(node: &Node, port: usize, cache: &mut Cache) {
+fn connect(node: &Node, port: usize, cache: &mut Cache) {
     match port {
         0 | 1 => cache.remove::<f64>(&node.get_inputs()[port]),
         _ => (),
     }
 }
 
-fn create_input_cache(node: &Node, port: usize, cache: &mut Cache) -> Option<CacheIndex> {
+fn disconnect(node: &Node, port: usize, cache: &mut Cache) -> Option<CacheIndex> {
     match port {
         0 => Some(cache.insert(0.)),
         1 => Some(cache.insert(0.)),

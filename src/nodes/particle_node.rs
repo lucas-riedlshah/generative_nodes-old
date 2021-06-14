@@ -61,7 +61,7 @@ pub fn node_factory(cache: &mut Cache) -> Node {
 
     Node::new(inputs, outputs, remove_all_cache)
         .with_compute(compute)
-        .with_create_remove_input_cache(create_input_cache, remove_input_cache)
+        .with_create_remove_input_cache(disconnect, connect)
 }
 
 fn compute(inputs: &Vec<CacheIndex>, outputs: &Vec<CacheIndex>, cache: &mut Cache) {
@@ -115,7 +115,7 @@ fn compute(inputs: &Vec<CacheIndex>, outputs: &Vec<CacheIndex>, cache: &mut Cach
     *cache.get_mut::<Vector2<f64>>(&outputs[POSITION]).unwrap() = position;
 }
 
-fn remove_input_cache(node: &Node, port: usize, cache: &mut Cache) {
+fn connect(node: &Node, port: usize, cache: &mut Cache) {
     match port {
         MASS => cache.remove::<f64>(&node.get_inputs()[MASS]),
         FORCE => cache.remove::<Vector2<f64>>(&node.get_inputs()[FORCE]),
@@ -141,7 +141,7 @@ fn remove_input_cache(node: &Node, port: usize, cache: &mut Cache) {
     }
 }
 
-fn create_input_cache(node: &Node, port: usize, cache: &mut Cache) -> Option<CacheIndex> {
+fn disconnect(node: &Node, port: usize, cache: &mut Cache) -> Option<CacheIndex> {
     match port {
         MASS => Some(cache.insert(1.)),
         FORCE => Some(cache.insert(Vector2::new(0., 0.))),
