@@ -163,17 +163,17 @@ impl Widget<Rc<RefCell<App>>> for GraphWidget {
                     ctx.request_layout();
                 }
                 self.is_translating_nodes = false;
-                if mouse.button.is_right() {
-                    ctx.show_context_menu(ContextMenu::new(
-                        MenuDesc::<Rc<RefCell<App>>>::new(LocalizedString::new("Add Node")).append(
-                            MenuItem::new(
-                                LocalizedString::new("Particle"),
-                                Command::new(ADD_NODE, 0, Target::Widget(ctx.widget_id())),
-                            ),
-                        ),
-                        mouse.pos,
-                    ))
-                }
+                // if mouse.button.is_right() {
+                //     ctx.show_context_menu(ContextMenu::new(
+                //         MenuDesc::<Rc<RefCell<App>>>::new(LocalizedString::new("Add Node")).append(
+                //             MenuItem::new(
+                //                 LocalizedString::new("Particle"),
+                //                 Command::new(ADD_NODE, 0, Target::Widget(ctx.widget_id())),
+                //             ),
+                //         ),
+                //         mouse.pos,
+                //     ))
+                // }
             }
             Event::MouseMove(mouse) => {
                 if self.is_translating_nodes {
