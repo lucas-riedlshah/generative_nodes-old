@@ -234,7 +234,8 @@ impl Widget<Rc<RefCell<App>>> for GraphWidget {
         }
 
         self.last_layout_instant = Instant::now();
-        bc.max()
+        // TODO: Sort out how to return the right size for this widget and [Viewer2D]
+        bc.min()
     }
 
     fn paint(&mut self, ctx: &mut PaintCtx, data: &Rc<RefCell<App>>, env: &Env) {
