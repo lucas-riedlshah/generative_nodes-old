@@ -1,15 +1,9 @@
-use std::{
-    cell::RefCell,
-    collections::HashMap,
-    ops::Add,
-    rc::Rc,
-    time::{Duration, Instant},
-};
+use std::{cell::RefCell, collections::HashMap, ops::Add, rc::Rc, time::Instant};
 
 use druid::{
-    kurbo::QuadBez, BoxConstraints, Color, Command, ContextMenu, Env, Event, EventCtx, LayoutCtx,
-    LifeCycle, LifeCycleCtx, LocalizedString, MenuDesc, MenuItem, PaintCtx, Point, RenderContext,
-    Selector, Size, Target, TimerToken, UpdateCtx, Widget, WidgetPod,
+    kurbo::QuadBez, BoxConstraints, Color, Command, Env, Event, EventCtx, LayoutCtx,
+    LifeCycle, LifeCycleCtx, LocalizedString, PaintCtx, Point, RenderContext,
+    Selector, Size, Target, UpdateCtx, Widget, WidgetPod,
 };
 
 use crate::core::App;
@@ -49,7 +43,6 @@ pub struct GraphWidget {
     is_translating_nodes: bool,
     last_mouse_pos: Point,
     last_layout_instant: Instant,
-    render_timer_token: TimerToken, // TODO: Remove this and put it on the node that will actually render the frames.
 }
 
 impl GraphWidget {
@@ -61,7 +54,6 @@ impl GraphWidget {
             is_translating_nodes: false,
             last_mouse_pos: Point::ZERO,
             last_layout_instant: Instant::now(),
-            render_timer_token: TimerToken::INVALID,
         }
     }
 
@@ -122,14 +114,6 @@ impl Widget<Rc<RefCell<App>>> for GraphWidget {
                         PortDirection::Output => outputs,
                     })
                     .insert(*port, (*position - self.nodes[*node].position).to_point());
-                }
-            }
-            Event::Timer(token) => {
-                if *token == self.render_timer_token {
-                    let mut app = data.borrow_mut();
-                    app.compute();
-                    self.render_timer_token = ctx.request_timer(Duration::from_millis(30));
-                    // ctx.request_paint();
                 }
             }
             Event::MouseDown(mouse) => {
@@ -216,9 +200,6 @@ impl Widget<Rc<RefCell<App>>> for GraphWidget {
         data: &Rc<RefCell<App>>,
         env: &Env,
     ) {
-        if let LifeCycle::WidgetAdded = event {
-            self.render_timer_token = ctx.request_timer(Duration::from_secs(1));
-        }
         for node_index in &self.node_render_order {
             let node = self.nodes.get_mut(*node_index).unwrap();
             node.widget.lifecycle(ctx, event, data, env);
