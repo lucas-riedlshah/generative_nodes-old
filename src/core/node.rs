@@ -51,19 +51,16 @@ impl Node {
 
     pub fn with_create_remove_input_cache(
         mut self,
-        create_input_cache_func: fn(
-            node: &Node,
-            port: usize,
-            cache: &mut Cache,
-        ) -> Option<CacheIndex>,
-        remove_input_cache_func: fn(node: &Node, port: usize, cache: &mut Cache),
+        disconnect: fn(node: &Node, port: usize, cache: &mut Cache) -> Option<CacheIndex>,
+        connect: fn(node: &Node, port: usize, cache: &mut Cache),
     ) -> Self {
-        self.disconnect = Some(create_input_cache_func);
-        self.connect = Some(remove_input_cache_func);
+        self.disconnect = Some(disconnect);
+        self.connect = Some(connect);
         self
     }
 
     pub fn connect_input(&mut self, port: usize, new_cache_index: CacheIndex, cache: &mut Cache) {
+        // TODO: This is what is causing the crash when changing an input. Needs to only remove cache if it is owned by the node and node from a connected node.
         if let Some(func) = self.connect {
             (func)(&self, port, cache);
         }
@@ -84,10 +81,6 @@ impl Node {
 
     pub fn get_inputs(&self) -> &Vec<CacheIndex> {
         &self.inputs
-    }
-
-    pub fn get_outputs(&self) -> &Vec<CacheIndex> {
-        &self.outputs
     }
 
     pub fn compute(&self, cache: &mut Cache) {
