@@ -58,6 +58,10 @@ impl<T> AllocatedVec<T> {
     pub fn len(&self) -> usize {
         self.vec.len() - self.free.len()
     }
+    
+    pub fn raw_len(&self) -> usize {
+        self.vec.len()
+    }
 
     pub fn iter(&self) -> Iter<'_, Option<T>> {
         self.vec.iter()
