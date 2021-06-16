@@ -51,6 +51,10 @@ impl Cache {
         CacheIndex::new::<T>(vec.len() - 1)
     }
 
+    // TODO: Have this function and any other "get" functions return an struct which contains not only the cached [T],
+    // but also a bool declaring whether or not this cache has changed. 
+    // This would make optimising the compute() functions of nodes easier.
+    // [AllocVec] might be the right place for this info to be stored. Maybe in a parallel [Vector].
     pub fn get<T: 'static>(&self, cache_index: &CacheIndex) -> Option<&T> {
         if cache_index.is_type::<T>() {
             if let Some(vec) = self.data.get::<AllocatedVec<T>>() {

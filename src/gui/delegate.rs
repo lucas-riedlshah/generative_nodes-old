@@ -1,8 +1,6 @@
-use std::{cell::RefCell, rc::Rc, time::Instant};
+use std::{cell::RefCell, rc::Rc};
 
-use druid::{
-    AppDelegate, Command, DelegateCtx, Env, Handled, Selector, Target, Widget, WindowId,
-};
+use druid::{AppDelegate, Command, DelegateCtx, Env, Handled, Selector, Target, Widget, WindowId};
 
 use crate::core::App;
 
@@ -108,6 +106,7 @@ impl AppDelegate<Rc<RefCell<App>>> for Delegate {
 
         app.add_edge(value_node, 0, vector_node, 0);
         app.add_edge(value_node, 0, vector_node, 1);
-        // app.add_edge(vector_node, 0, particle_node, 3);
+        app.add_edge(vector_node, 2, particle_node, 3);
+        app.add_edge(particle_node, 8, circle_node, 0);
     }
 }

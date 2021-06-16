@@ -71,6 +71,8 @@ pub struct Node {
         Should alwawys get mutable references to outputs.
         Called every frame.
     */
+    // TODO: Investigate whether storing all these funcs in Options is more efficient than just having empty funcs which are used if no func is given.
+    // Granted, this efficiency doesn't really matter for disconnect/connect functions, but compute() is gonna be called every frame, soooo...
     compute: Option<fn(ports: &Vec<Port>, cache: &mut Cache)>,
     /// Called when the node is about to be removed. Primary purpose is to remove any input/output values from the [Cache].
     remove_all_cache: fn(ports: &Vec<Port>, cache: &mut Cache),

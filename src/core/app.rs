@@ -60,6 +60,7 @@ impl App {
         &self.nodes.get(node_index).unwrap()
     }
 
+    // TODO: Rewrite this and split it into separate and more specified private methods to make this code more readable.
     pub fn add_edge(&mut self, from_node: usize, from_port: usize, to_node: usize, to_port: usize) {
         let new_cache_index = self
             .nodes
