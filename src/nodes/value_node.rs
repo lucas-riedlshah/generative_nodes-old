@@ -1,28 +1,32 @@
 use std::{cell::RefCell, rc::Rc};
 
 use druid::{
-    widget::{Container, CrossAxisAlignment, Flex, Label},
+    widget::{Container, CrossAxisAlignment, Flex, FlexParams, Label, Slider, Stepper},
     Color, Widget, WidgetExt,
 };
 
 use crate::{
-    core::{App, Cache, CacheIndex, Node},
-    gui::{graph_widget::PortDirection, node_widget::NodeWidget, port_widget::PortWidget},
+    core::{App, Cache, Direction, Node, Port},
+    gui::{
+        cache_lens::CacheLens, graph_widget::PortDirection, node_widget::NodeWidget,
+        port_widget::PortWidget,
+    },
 };
 
+// Outputs
+const VALUE: usize = 0;
+
 pub fn node_factory(cache: &mut Cache) -> Node {
-    let value = cache.insert(10.);
+    let value = cache.insert(0.);
 
-    let inputs = Vec::new();
+    let mut ports = Vec::new();
+    ports.push(Port::new(value, Direction::Output));
 
-    let mut outputs = Vec::new();
-    outputs.push(value);
-
-    Node::new(inputs, outputs, remove_all_cache)
+    Node::new(ports, remove_all_cache)
 }
 
-fn remove_all_cache(inputs: &Vec<CacheIndex>, outputs: &Vec<CacheIndex>, cache: &mut Cache) {
-    cache.remove::<f64>(&outputs[0]);
+fn remove_all_cache(ports: &Vec<Port>, cache: &mut Cache) {
+    cache.remove::<f64>(ports[VALUE].get_cache_index());
 }
 
 pub fn widget_factory(index: usize) -> Box<dyn Widget<Rc<RefCell<App>>>> {
@@ -37,11 +41,10 @@ pub fn widget_factory(index: usize) -> Box<dyn Widget<Rc<RefCell<App>>>> {
                         .cross_axis_alignment(CrossAxisAlignment::End)
                         .with_child(
                             Flex::row()
-                                .with_child(Label::new("Value"))
                                 .with_spacer(5.)
                                 .with_child(PortWidget::new(
                                     index,
-                                    0,
+                                    VALUE,
                                     PortDirection::Output,
                                     PortWidget::F64,
                                 )),

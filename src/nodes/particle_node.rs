@@ -7,26 +7,23 @@ use druid::{
 use nalgebra::Vector2;
 
 use super::common::Particle;
-use crate::{
-    core::{App, Cache, CacheIndex, Node},
-    gui::{graph_widget::PortDirection, node_widget::NodeWidget, port_widget::PortWidget},
-};
+use crate::{core::{App, Cache, CacheIndex, Direction, Node, Port}, gui::{graph_widget::PortDirection, node_widget::NodeWidget, port_widget::PortWidget}};
 
-// Input ports
+// Inputs
 const MASS: usize = 0;
 const FORCE: usize = 1;
 const SET_ACCELERATION: usize = 2;
 const SET_VELOCITY: usize = 3;
 const SET_POSITION: usize = 4;
-const USE_ACCELERATION: usize = 5;
-const USE_VELOCITY: usize = 6;
-const USE_POSITION: usize = 7;
-
-// Output ports
-const PARTICLE: usize = 0;
-const ACCELERATION: usize = 1;
-const VELOCITY: usize = 2;
-const POSITION: usize = 3;
+// Outputs
+const PARTICLE: usize = 5;
+const ACCELERATION: usize = 6;
+const VELOCITY: usize = 7;
+const POSITION: usize = 8;
+// Other
+const USE_ACCELERATION: usize = 9;
+const USE_VELOCITY: usize = 10;
+const USE_POSITION: usize = 11;
 
 pub fn node_factory(cache: &mut Cache) -> Node {
     let mass = cache.insert(1.);
@@ -43,99 +40,99 @@ pub fn node_factory(cache: &mut Cache) -> Node {
     let velocity = cache.insert(Vector2::new(0., 0.));
     let position = cache.insert(Vector2::new(0., 0.));
 
-    let mut inputs = Vec::new();
-    inputs.push(mass);
-    inputs.push(force);
-    inputs.push(set_acceleration);
-    inputs.push(set_velocity);
-    inputs.push(set_position);
-    inputs.push(use_acceleration);
-    inputs.push(use_velocity);
-    inputs.push(use_position);
+    let mut ports = Vec::new();
+    ports.push(Port::new(mass, Direction::Input));
+    ports.push(Port::new(force, Direction::Input));
+    ports.push(Port::new(set_acceleration, Direction::Input));
+    ports.push(Port::new(set_velocity, Direction::Input));
+    ports.push(Port::new(set_position, Direction::Input));
+    ports.push(Port::new(particle, Direction::Output));
+    ports.push(Port::new(acceleration, Direction::Output));
+    ports.push(Port::new(velocity, Direction::Output));
+    ports.push(Port::new(position, Direction::Output));
+    // TODO: these 3 "inputs" could probably just be replaced by the is_connected parameter of the [Port].
+    ports.push(Port::new(use_acceleration, Direction::Input));
+    ports.push(Port::new(use_velocity, Direction::Input));
+    ports.push(Port::new(use_position, Direction::Input));
 
-    let mut outputs = Vec::new();
-    outputs.push(particle);
-    outputs.push(acceleration);
-    outputs.push(velocity);
-    outputs.push(position);
 
-    Node::new(inputs, outputs, remove_all_cache)
+    Node::new(ports, remove_all_cache)
         .with_compute(compute)
         .with_create_remove_input_cache(disconnect, connect)
 }
 
-fn compute(inputs: &Vec<CacheIndex>, outputs: &Vec<CacheIndex>, cache: &mut Cache) {
+fn compute(ports: &Vec<Port>, cache: &mut Cache) {
     *cache
-        .get_mut::<Particle>(&outputs[PARTICLE])
+        .get_mut::<Particle>(&ports[PARTICLE].get_cache_index())
         .unwrap()
-        .get_mut_mass() = cache.get::<f64>(&inputs[MASS]).unwrap().clone();
+        .get_mut_mass() = cache.get::<f64>(&ports[MASS].get_cache_index()).unwrap().clone();
 
-    if *cache.get::<bool>(&inputs[USE_POSITION]).unwrap() {
-        let set_position = cache.get::<Vector2<f64>>(&inputs[SET_POSITION]).unwrap();
+    if *cache.get::<bool>(&ports[USE_POSITION].get_cache_index()).unwrap() {
+        let set_position = cache.get::<Vector2<f64>>(&ports[SET_POSITION].get_cache_index()).unwrap();
         *cache
-            .get_mut::<Particle>(&outputs[PARTICLE])
+            .get_mut::<Particle>(&ports[PARTICLE].get_cache_index())
             .unwrap()
             .get_mut_position() = set_position.clone();
-    } else if *cache.get::<bool>(&inputs[USE_VELOCITY]).unwrap() {
-        let set_velocity = cache.get::<Vector2<f64>>(&inputs[SET_VELOCITY]).unwrap();
+    } else if *cache.get::<bool>(&ports[USE_VELOCITY].get_cache_index()).unwrap() {
+        let set_velocity = cache.get::<Vector2<f64>>(&ports[SET_VELOCITY].get_cache_index()).unwrap();
         *cache
-            .get_mut::<Particle>(&outputs[PARTICLE])
+            .get_mut::<Particle>(&ports[PARTICLE].get_cache_index())
             .unwrap()
             .get_mut_velocity() = set_velocity.clone();
-    } else if *cache.get::<bool>(&inputs[USE_ACCELERATION]).unwrap() {
+    } else if *cache.get::<bool>(&ports[USE_ACCELERATION].get_cache_index()).unwrap() {
         let set_acceleration = cache
-            .get::<Vector2<f64>>(&inputs[SET_ACCELERATION])
+            .get::<Vector2<f64>>(&ports[SET_ACCELERATION].get_cache_index())
             .unwrap();
         *cache
-            .get_mut::<Particle>(&outputs[PARTICLE])
+            .get_mut::<Particle>(&ports[PARTICLE].get_cache_index())
             .unwrap()
             .get_mut_acceleration() = set_acceleration.clone();
     } else {
-        let force = cache.get::<Vector2<f64>>(&inputs[FORCE]).unwrap().clone();
+        let force = cache.get::<Vector2<f64>>(&ports[FORCE].get_cache_index()).unwrap().clone();
         cache
-            .get_mut::<Particle>(&outputs[PARTICLE])
+            .get_mut::<Particle>(&ports[PARTICLE].get_cache_index())
             .unwrap()
             .apply_force(force);
     }
 
     cache
-        .get_mut::<Particle>(&outputs[PARTICLE])
+        .get_mut::<Particle>(&ports[PARTICLE].get_cache_index())
         .unwrap()
         .update();
 
-    let particle = cache.get::<Particle>(&outputs[PARTICLE]).unwrap();
+    let particle = cache.get::<Particle>(&ports[PARTICLE].get_cache_index()).unwrap();
     let acceleration = *particle.get_acceleration();
     let velocity = *particle.get_velocity();
     let position = *particle.get_position();
 
     *cache
-        .get_mut::<Vector2<f64>>(&outputs[ACCELERATION])
+        .get_mut::<Vector2<f64>>(&ports[ACCELERATION].get_cache_index())
         .unwrap() = acceleration;
-    *cache.get_mut::<Vector2<f64>>(&outputs[VELOCITY]).unwrap() = velocity;
-    *cache.get_mut::<Vector2<f64>>(&outputs[POSITION]).unwrap() = position;
+    *cache.get_mut::<Vector2<f64>>(&ports[VELOCITY].get_cache_index()).unwrap() = velocity;
+    *cache.get_mut::<Vector2<f64>>(&ports[POSITION].get_cache_index()).unwrap() = position;
 }
 
 fn connect(node: &Node, port: usize, cache: &mut Cache) {
     match port {
-        MASS => cache.remove::<f64>(&node.get_inputs()[MASS]),
-        FORCE => cache.remove::<Vector2<f64>>(&node.get_inputs()[FORCE]),
+        MASS => cache.remove::<f64>(&node.get_ports()[MASS].get_cache_index()),
+        FORCE => cache.remove::<Vector2<f64>>(&node.get_ports()[FORCE].get_cache_index()),
         SET_ACCELERATION => {
             *cache
-                .get_mut::<bool>(&node.get_inputs()[USE_ACCELERATION])
+                .get_mut::<bool>(&node.get_ports()[USE_ACCELERATION].get_cache_index())
                 .unwrap() = true;
-            cache.remove::<Vector2<f64>>(&node.get_inputs()[SET_ACCELERATION])
+            cache.remove::<Vector2<f64>>(&node.get_ports()[SET_ACCELERATION].get_cache_index())
         }
         SET_VELOCITY => {
             *cache
-                .get_mut::<bool>(&node.get_inputs()[USE_VELOCITY])
+                .get_mut::<bool>(&node.get_ports()[USE_VELOCITY].get_cache_index())
                 .unwrap() = true;
-            cache.remove::<Vector2<f64>>(&node.get_inputs()[SET_VELOCITY])
+            cache.remove::<Vector2<f64>>(&node.get_ports()[SET_VELOCITY].get_cache_index())
         }
         SET_POSITION => {
             *cache
-                .get_mut::<bool>(&node.get_inputs()[USE_POSITION])
+                .get_mut::<bool>(&node.get_ports()[USE_POSITION].get_cache_index())
                 .unwrap() = true;
-            cache.remove::<Vector2<f64>>(&node.get_inputs()[SET_POSITION])
+            cache.remove::<Vector2<f64>>(&node.get_ports()[SET_POSITION].get_cache_index())
         }
         _ => (),
     }
@@ -147,19 +144,19 @@ fn disconnect(node: &Node, port: usize, cache: &mut Cache) -> Option<CacheIndex>
         FORCE => Some(cache.insert(Vector2::new(0., 0.))),
         SET_ACCELERATION => {
             *cache
-                .get_mut::<bool>(&node.get_inputs()[USE_ACCELERATION])
+                .get_mut::<bool>(&node.get_ports()[USE_ACCELERATION].get_cache_index())
                 .unwrap() = false;
             Some(cache.insert(Vector2::new(0., 0.)))
         }
         SET_VELOCITY => {
             *cache
-                .get_mut::<bool>(&node.get_inputs()[USE_VELOCITY])
+                .get_mut::<bool>(&node.get_ports()[USE_VELOCITY].get_cache_index())
                 .unwrap() = false;
             Some(cache.insert(Vector2::new(0., 0.)))
         }
         SET_POSITION => {
             *cache
-                .get_mut::<bool>(&node.get_inputs()[USE_POSITION])
+                .get_mut::<bool>(&node.get_ports()[USE_POSITION].get_cache_index())
                 .unwrap() = false;
             Some(cache.insert(Vector2::new(0., 0.)))
         }
@@ -167,19 +164,19 @@ fn disconnect(node: &Node, port: usize, cache: &mut Cache) -> Option<CacheIndex>
     }
 }
 
-fn remove_all_cache(inputs: &Vec<CacheIndex>, outputs: &Vec<CacheIndex>, cache: &mut Cache) {
-    cache.remove::<f64>(&inputs[MASS]);
-    cache.remove::<Vector2<f64>>(&inputs[FORCE]);
-    cache.remove::<Vector2<f64>>(&inputs[SET_ACCELERATION]);
-    cache.remove::<Vector2<f64>>(&inputs[SET_VELOCITY]);
-    cache.remove::<Vector2<f64>>(&inputs[SET_POSITION]);
-    cache.remove::<bool>(&inputs[USE_ACCELERATION]);
-    cache.remove::<bool>(&inputs[USE_POSITION]);
-    cache.remove::<bool>(&inputs[USE_VELOCITY]);
-    cache.remove::<Particle>(&outputs[PARTICLE]);
-    cache.remove::<Vector2<f64>>(&outputs[ACCELERATION]);
-    cache.remove::<Vector2<f64>>(&outputs[VELOCITY]);
-    cache.remove::<Vector2<f64>>(&outputs[POSITION]);
+fn remove_all_cache(ports: &Vec<Port>, cache: &mut Cache) {
+    cache.remove::<f64>(&ports[MASS].get_cache_index());
+    cache.remove::<Vector2<f64>>(&ports[FORCE].get_cache_index());
+    cache.remove::<Vector2<f64>>(&ports[SET_ACCELERATION].get_cache_index());
+    cache.remove::<Vector2<f64>>(&ports[SET_VELOCITY].get_cache_index());
+    cache.remove::<Vector2<f64>>(&ports[SET_POSITION].get_cache_index());
+    cache.remove::<bool>(&ports[USE_ACCELERATION].get_cache_index());
+    cache.remove::<bool>(&ports[USE_POSITION].get_cache_index());
+    cache.remove::<bool>(&ports[USE_VELOCITY].get_cache_index());
+    cache.remove::<Particle>(&ports[PARTICLE].get_cache_index());
+    cache.remove::<Vector2<f64>>(&ports[ACCELERATION].get_cache_index());
+    cache.remove::<Vector2<f64>>(&ports[VELOCITY].get_cache_index());
+    cache.remove::<Vector2<f64>>(&ports[POSITION].get_cache_index());
 }
 
 pub fn widget_factory(index: usize) -> Box<dyn Widget<Rc<RefCell<App>>>> {

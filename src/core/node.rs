@@ -1,39 +1,95 @@
 use crate::core::{Cache, CacheIndex};
 
+pub enum Direction {
+    Input,
+    Output,
+}
+
+pub struct Port {
+    default_cache_index: CacheIndex,
+    cache_index: CacheIndex,
+    direction: Direction,
+    is_connected: bool, // variable for the number of connected edges? Would consequently make is_connected redundant
+}
+
+impl Port {
+    pub fn new(default_cache_index: CacheIndex, direction: Direction) -> Port {
+        Port {
+            cache_index: default_cache_index.clone(),
+            default_cache_index,
+            direction,
+            is_connected: false,
+        }
+    }
+
+    pub fn connect(&mut self, new_cache_index: CacheIndex) {
+        self.cache_index = new_cache_index;
+        self.is_connected = true;
+    }
+
+    pub fn disconnect(&mut self) {
+        self.cache_index = self.default_cache_index.clone();
+        self.is_connected = false;
+    }
+
+    pub fn get_cache_index(&self) -> &CacheIndex {
+        &self.cache_index
+    }
+
+    // TODO: Remove
+    // pub fn set_cache_index(&mut self, new_cache_index: CacheIndex) {
+    //     self.cache_index = new_cache_index;
+    // }
+
+    pub fn get_default_cache_index(&self) -> &CacheIndex {
+        &self.default_cache_index
+    }
+
+    pub fn set_default_cache_index(&mut self, new_default_cache_index: CacheIndex) {
+        self.default_cache_index = new_default_cache_index;
+    }
+
+    pub fn get_direction(&self) -> &Direction {
+        &self.direction
+    }
+
+    pub fn is_connected(&self) -> bool {
+        self.is_connected
+    }
+
+    // TODO: Remove?
+    // pub fn set_connected(&mut self, is_connected: bool) {
+    //     self.is_connected = is_connected;
+    // }
+}
+
 pub struct Node {
-    // TODO: flatten inputs and outputs into one vec.
-    /// Stores [CacheIndex]'s to all inputs(/internal values).
-    inputs: Vec<CacheIndex>,
-    /// Stores [CacheIndex]'s to all outputs.
-    outputs: Vec<CacheIndex>,
+    /// Stores [Port]s containing [CacheIndex]es to any input/output data.
+    ports: Vec<Port>,
     /** Modifies the [Cache].
         Should generally get immutable references to inputs. The except being "internal" values (inputs which aren't exposed by the GUI).
         Should alwawys get mutable references to outputs.
         Called every frame.
     */
-    compute: Option<fn(inputs: &Vec<CacheIndex>, outputs: &Vec<CacheIndex>, cache: &mut Cache)>,
+    compute: Option<fn(ports: &Vec<Port>, cache: &mut Cache)>,
     /// Called when the node is about to be removed. Primary purpose is to remove any input/output values from the [Cache].
-    remove_all_cache: fn(inputs: &Vec<CacheIndex>, outputs: &Vec<CacheIndex>, cache: &mut Cache),
-    // TODO: consider replacing the create/remove input cache funcs with complete disconnect/connect funcs.
+    remove_all_cache: fn(ports: &Vec<Port>, cache: &mut Cache),
     /// Called when an input port is disconnected and so a new value must be created in the Cache.
-    disconnect: Option<fn(node: &Node, port: usize, cache: &mut Cache) -> Option<CacheIndex>>,
+    disconnect: Option<fn(node: &Node, port_index: usize, cache: &mut Cache) -> Option<CacheIndex>>,
     /// Called when an input port is connected and so the current ("internal") value must be removed from the [Cache].
-    connect: Option<fn(node: &Node, port: usize, cache: &mut Cache)>,
+    connect: Option<fn(node: &Node, port_index: usize, cache: &mut Cache)>,
 }
 
 impl Node {
     pub fn new(
-        inputs: Vec<CacheIndex>,
-        outputs: Vec<CacheIndex>,
+        ports: Vec<Port>,
         remove_all_cache: fn(
-            inputs: &Vec<CacheIndex>,
-            outputs: &Vec<CacheIndex>,
+            ports: &Vec<Port>,
             cache: &mut Cache,
         ),
     ) -> Self {
         Node {
-            inputs,
-            outputs,
+            ports,
             compute: None,
             remove_all_cache,
             disconnect: None,
@@ -43,7 +99,7 @@ impl Node {
 
     pub fn with_compute(
         mut self,
-        compute_func: fn(inputs: &Vec<CacheIndex>, outputs: &Vec<CacheIndex>, cache: &mut Cache),
+        compute_func: fn(ports: &Vec<Port>, cache: &mut Cache),
     ) -> Self {
         self.compute = Some(compute_func);
         self
@@ -51,45 +107,52 @@ impl Node {
 
     pub fn with_create_remove_input_cache(
         mut self,
-        disconnect: fn(node: &Node, port: usize, cache: &mut Cache) -> Option<CacheIndex>,
-        connect: fn(node: &Node, port: usize, cache: &mut Cache),
+        disconnect: fn(node: &Node, port_index: usize, cache: &mut Cache) -> Option<CacheIndex>,
+        connect: fn(node: &Node, port_index: usize, cache: &mut Cache),
     ) -> Self {
         self.disconnect = Some(disconnect);
         self.connect = Some(connect);
         self
     }
 
-    pub fn connect_input(&mut self, port: usize, new_cache_index: CacheIndex, cache: &mut Cache) {
-        // TODO: This is what is causing the crash when changing an input. Needs to only remove cache if it is owned by the node and node from a connected node.
-        if let Some(func) = self.connect {
-            (func)(&self, port, cache);
-        }
-        *self.inputs.get_mut(port).unwrap() = new_cache_index;
-    }
-
-    pub fn disconnect_input(&mut self, port: usize, cache: &mut Cache) {
-        self.inputs.remove(port);
-        if let Some(func) = self.disconnect {
-            self.inputs
-                .insert(port, (func)(&self, port, cache).unwrap());
+    pub fn connect_input(&mut self, port_index: usize, new_cache_index: CacheIndex, cache: &mut Cache) {
+        // TODO: This is what is causing the crash when changing an input. Needs to only remove cache if it is owned by the node and not from a connected node.
+        if let Direction::Input = self.ports[port_index].get_direction() {
+            if let Some(func) = self.connect {
+                (func)(&self, port_index, cache);
+            }
+            let port = self.ports.get_mut(port_index).unwrap();
+            port.connect(new_cache_index);
         }
     }
 
-    pub fn get_output(&self, port: usize) -> Option<&CacheIndex> {
-        self.outputs.get(port)
+    // TODO: I'd like to essentially make this method obselete by somehow storing a "default" cache index which is
+    // just switched out for any connection. And then if disconnected, this default is used once-more.
+    // TODO: Would need to check somehow to see if the port is meant to be able to handle multiple inputs - if this is something I decide to implement.
+    pub fn disconnect_input(&mut self, port_index: usize, cache: &mut Cache) {
+        if let Direction::Input = self.ports[port_index].get_direction() {
+            self.ports.get_mut(port_index).unwrap().disconnect();
+        }
     }
 
-    pub fn get_inputs(&self) -> &Vec<CacheIndex> {
-        &self.inputs
+    pub fn get_output(&self, port_index: usize) -> Option<&CacheIndex> {
+        match self.ports.get(port_index) {
+            Some(port) => Some(port.get_cache_index()),
+            None => None
+        }
+    }
+
+    pub fn get_ports(&self) -> &Vec<Port> {
+        &self.ports
     }
 
     pub fn compute(&self, cache: &mut Cache) {
-        if let Some(func) = self.compute {
-            (func)(&self.inputs, &self.outputs, cache);
+        if let Some(compute_func) = self.compute {
+            (compute_func)(&self.ports, cache);
         }
     }
 
     pub fn remove_all_cache(&mut self, cache: &mut Cache) {
-        (self.remove_all_cache)(&self.inputs, &self.outputs, cache);
+        (self.remove_all_cache)(&self.ports, cache);
     }
 }
