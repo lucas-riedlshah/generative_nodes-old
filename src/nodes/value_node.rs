@@ -41,6 +41,22 @@ pub fn widget_factory(index: usize) -> Box<dyn Widget<Rc<RefCell<App>>>> {
                         .cross_axis_alignment(CrossAxisAlignment::End)
                         .with_child(
                             Flex::row()
+                                .with_child(
+                                    Stepper::new()
+                                        .with_step(0.1)
+                                        .lens(CacheLens::<f64>::new(index, VALUE)),
+                                )
+                                .with_flex_child(
+                                    Slider::new()
+                                        .with_range(-2., 2.)
+                                        .lens(CacheLens::<f64>::new(index, VALUE))
+                                        .expand_width(),
+                                    1.0,
+                                )
+                                .with_child(
+                                    Label::new(|value: &f64, _: &_| {value.to_string()})
+                                        .lens(CacheLens::<f64>::new(index, VALUE)),
+                                )
                                 .with_spacer(5.)
                                 .with_child(PortWidget::new(
                                     index,
@@ -52,7 +68,7 @@ pub fn widget_factory(index: usize) -> Box<dyn Widget<Rc<RefCell<App>>>> {
                         .with_spacer(5.)
                         .expand_width(),
                 )
-                .fix_width(150.)
+                .fix_width(200.)
                 .padding(5.),
         )
         .rounded(10.)

@@ -309,7 +309,7 @@ pub fn widget_factory(index: usize) -> Box<dyn Widget<Rc<RefCell<App>>>> {
                         )
                         .expand_width(),
                 )
-                .fix_width(150.)
+                .fix_width(200.)
                 .padding(5.),
         )
         .rounded(10.)

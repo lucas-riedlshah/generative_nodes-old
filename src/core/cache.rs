@@ -4,6 +4,7 @@ use anymap::AnyMap;
 
 use crate::core::AllocatedVec;
 
+#[derive(Clone)]
 pub struct CacheIndex {
     type_id: TypeId,
     index: usize
@@ -72,12 +73,12 @@ impl Cache {
         self.data.get::<AllocatedVec<T>>()
     }
 
-    pub fn set<T: 'static>(&mut self, cache_index: &CacheIndex, value: T) {
+    pub fn set<T: 'static>(&mut self, cache_index: &CacheIndex, new_value: T) {
         if cache_index.is_type::<T>() {
             self.data
                 .get_mut::<AllocatedVec<T>>()
                 .unwrap()
-                .set(*cache_index.index(), Some(value))
+                .set(*cache_index.index(), Some(new_value))
         }
     }
 
