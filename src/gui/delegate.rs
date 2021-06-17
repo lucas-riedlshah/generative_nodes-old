@@ -1,10 +1,10 @@
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use druid::{AppDelegate, Command, DelegateCtx, Env, Handled, Selector, Target, Widget, WindowId};
 
 use crate::core::App;
 
-pub const ADD_NODE: Selector<usize> = Selector::new("add_node");
+pub const ADD_NODE: Selector<&'static str> = Selector::new("add_node");
 pub const ADD_EDGE: Selector<(usize, usize)> = Selector::new("begin_edge");
 pub const ADD_NODE_WIDGET: Selector<(
     usize,
@@ -14,12 +14,12 @@ pub const ADD_NODE_WIDGET: Selector<(
 pub struct Delegate {
     creating_new_edge: bool,
     current_edge_end: Option<(usize, usize)>,
-    node_widget_factories: Vec<fn(index: usize) -> Box<dyn Widget<Rc<RefCell<App>>>>>,
+    node_widget_factories: HashMap<&'static str, fn(index: usize) -> Box<dyn Widget<Rc<RefCell<App>>>>>,
 }
 
 impl Delegate {
     pub fn new(
-        node_widget_factories: Vec<fn(index: usize) -> Box<dyn Widget<Rc<RefCell<App>>>>>,
+        node_widget_factories: HashMap<&'static str, fn(index: usize) -> Box<dyn Widget<Rc<RefCell<App>>>>>,
     ) -> Delegate {
         Delegate {
             creating_new_edge: false,
@@ -32,7 +32,7 @@ impl Delegate {
 impl AppDelegate<Rc<RefCell<App>>> for Delegate {
     fn command(
         &mut self,
-        _ctx: &mut DelegateCtx,
+        ctx: &mut DelegateCtx,
         _target: Target,
         command: &Command,
         data: &mut Rc<RefCell<App>>,
@@ -42,7 +42,13 @@ impl AppDelegate<Rc<RefCell<App>>> for Delegate {
         let mut app = data.borrow_mut();
 
         if command.is(ADD_NODE) {
-            println!("{}", command.get(ADD_NODE).unwrap());
+            let new_node_type = command.get(ADD_NODE).unwrap();
+            let new_node = app.add_node(*new_node_type);
+            ctx.submit_command(Command::new(
+                ADD_NODE_WIDGET,
+                (new_node, *self.node_widget_factories.get(*new_node_type).unwrap()),
+                Target::Global,
+            ));
         } else if command.is(ADD_EDGE) {
             if let Some(end) = command.get(ADD_EDGE) {
                 match self.current_edge_end {
@@ -74,39 +80,39 @@ impl AppDelegate<Rc<RefCell<App>>> for Delegate {
         _env: &Env,
         ctx: &mut DelegateCtx,
     ) {
-        let mut app = data.borrow_mut();
+        // let mut app = data.borrow_mut();
 
-        let value_node = app.add_node(0);
-        ctx.submit_command(Command::new(
-            ADD_NODE_WIDGET,
-            (value_node, *self.node_widget_factories.get(0).unwrap()),
-            Target::Window(id),
-        ));
+        // let value_node = app.add_node("Value");
+        // ctx.submit_command(Command::new(
+        //     ADD_NODE_WIDGET,
+        //     (value_node, *self.node_widget_factories.get("Value").unwrap()),
+        //     Target::Window(id),
+        // ));
 
-        let vector_node = app.add_node(1);
-        ctx.submit_command(Command::new(
-            ADD_NODE_WIDGET,
-            (vector_node, *self.node_widget_factories.get(1).unwrap()),
-            Target::Window(id),
-        ));
+        // let vector_node = app.add_node("Vector");
+        // ctx.submit_command(Command::new(
+        //     ADD_NODE_WIDGET,
+        //     (vector_node, *self.node_widget_factories.get().unwrap()),
+        //     Target::Window(id),
+        // ));
 
-        let particle_node = app.add_node(2);
-        ctx.submit_command(Command::new(
-            ADD_NODE_WIDGET,
-            (particle_node, *self.node_widget_factories.get(2).unwrap()),
-            Target::Window(id),
-        ));
+        // let particle_node = app.add_node(2);
+        // ctx.submit_command(Command::new(
+        //     ADD_NODE_WIDGET,
+        //     (particle_node, *self.node_widget_factories.get(2).unwrap()),
+        //     Target::Window(id),
+        // ));
 
-        let circle_node = app.add_node(3);
-        ctx.submit_command(Command::new(
-            ADD_NODE_WIDGET,
-            (circle_node, *self.node_widget_factories.get(3).unwrap()),
-            Target::Window(id),
-        ));
+        // let circle_node = app.add_node(3);
+        // ctx.submit_command(Command::new(
+        //     ADD_NODE_WIDGET,
+        //     (circle_node, *self.node_widget_factories.get(3).unwrap()),
+        //     Target::Window(id),
+        // ));
 
-        app.add_edge(value_node, 0, vector_node, 0);
-        app.add_edge(value_node, 0, vector_node, 1);
-        app.add_edge(vector_node, 2, particle_node, 3);
-        app.add_edge(particle_node, 8, circle_node, 0);
+        // app.add_edge(value_node, 0, vector_node, 0);
+        // app.add_edge(value_node, 0, vector_node, 1);
+        // app.add_edge(vector_node, 2, particle_node, 3);
+        // app.add_edge(particle_node, 8, circle_node, 0);
     }
 }

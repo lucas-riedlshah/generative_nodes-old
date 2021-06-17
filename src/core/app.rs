@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::core::{AllocatedVec, Cache, Node};
 
 /// Used to determine the compute order of nodes.
@@ -20,7 +22,7 @@ pub struct App {
     cache: Cache,
     nodes: AllocatedVec<Node>,
     edges: Vec<Edge>,
-    factories: Vec<fn(&mut Cache) -> Node>,
+    factories: HashMap<&'static str, fn(&mut Cache) -> Node>,
 }
 
 impl App {
@@ -29,16 +31,16 @@ impl App {
             cache: Cache::new(),
             nodes: AllocatedVec::new(),
             edges: Vec::new(),
-            factories: Vec::new(),
+            factories: HashMap::new(),
         }
     }
 
-    pub fn with_factories(mut self, factories: Vec<fn(&mut Cache) -> Node>) -> Self {
+    pub fn with_factories(mut self, factories: HashMap<&'static str, fn(&mut Cache) -> Node>) -> Self {
         self.factories = factories;
         self
     }
 
-    pub fn add_node(&mut self, node_factory_index: usize) -> usize {
+    pub fn add_node(&mut self, node_factory_index: &'static str) -> usize {
         self.nodes
             .push((self.factories[node_factory_index])(&mut self.cache))
     }
@@ -99,8 +101,6 @@ impl App {
             to_port,
             edge_type,
         });
-
-        println!("new edge count: {}", self.edges.len());
     }
 
     fn remove_edge(&mut self, index: usize) {

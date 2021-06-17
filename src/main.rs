@@ -20,6 +20,6 @@ fn main() -> Result<(), PlatformError> {
 
     AppLauncher::with_window(main_window)
         .delegate(Delegate::new(nodes::node_widget_factories()))
-        // .log_to_console()
+        .log_to_console()
         .launch(Rc::new(RefCell::new(app)))
 }

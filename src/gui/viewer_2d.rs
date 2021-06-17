@@ -69,21 +69,28 @@ impl Widget<Rc<RefCell<App>>> for Viewer2D {
     }
 
     fn paint(&mut self, ctx: &mut druid::PaintCtx, data: &Rc<RefCell<App>>, _env: &druid::Env) {
-        for i in data
+        if data
             .borrow()
             .get_cache()
             .get_all_of_type::<Circle>()
-            .unwrap()
-            .iter()
+            .is_some()
         {
-            if let Some(circle) = i {
-                ctx.fill(
-                    kurbo::Circle::new(
-                        Point::new(circle.get_position().x, circle.get_position().y),
-                        *circle.get_radius(),
-                    ),
-                    &Color::WHITE,
-                )
+            for i in data
+                .borrow()
+                .get_cache()
+                .get_all_of_type::<Circle>()
+                .unwrap()
+                .iter()
+            {
+                if let Some(circle) = i {
+                    ctx.fill(
+                        kurbo::Circle::new(
+                            Point::new(circle.get_position().x, circle.get_position().y),
+                            *circle.get_radius(),
+                        ),
+                        &Color::WHITE,
+                    )
+                }
             }
         }
     }

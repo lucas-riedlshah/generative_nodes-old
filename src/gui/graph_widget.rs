@@ -1,9 +1,9 @@
 use std::{cell::RefCell, collections::HashMap, ops::Add, rc::Rc, time::Instant};
 
 use druid::{
-    kurbo::QuadBez, BoxConstraints, Color, Command, Env, Event, EventCtx, LayoutCtx,
-    LifeCycle, LifeCycleCtx, LocalizedString, PaintCtx, Point, RenderContext,
-    Selector, Size, Target, UpdateCtx, Widget, WidgetPod,
+    kurbo::QuadBez, widget::LabelText, BoxConstraints, Color, Command, Env, Event, EventCtx,
+    LayoutCtx, LifeCycle, LifeCycleCtx, LocalizedString, Menu, MenuItem, PaintCtx, Point,
+    RenderContext, Selector, Size, Target, UpdateCtx, Widget, WidgetPod,
 };
 
 use crate::core::App;
@@ -163,17 +163,22 @@ impl Widget<Rc<RefCell<App>>> for GraphWidget {
                     ctx.request_layout();
                 }
                 self.is_translating_nodes = false;
-                // if mouse.button.is_right() {
-                //     ctx.show_context_menu(ContextMenu::new(
-                //         MenuDesc::<Rc<RefCell<App>>>::new(LocalizedString::new("Add Node")).append(
-                //             MenuItem::new(
-                //                 LocalizedString::new("Particle"),
-                //                 Command::new(ADD_NODE, 0, Target::Widget(ctx.widget_id())),
-                //             ),
-                //         ),
-                //         mouse.pos,
-                //     ))
-                // }
+                if mouse.button.is_right() {
+                    let mut menu = Menu::new("Add Node");
+
+                    for i in ["Value", "Vector2D", "Particle", "Circle"].iter() {
+                        menu = menu.entry(MenuItem::new(i.to_string()).command(Command::new(
+                            ADD_NODE,
+                            i,
+                            Target::Global,
+                        )));
+                    }
+                    
+                    ctx.show_context_menu::<Rc<RefCell<App>>>(
+                        menu,
+                        mouse.pos,
+                    )
+                }
             }
             Event::MouseMove(mouse) => {
                 if self.is_translating_nodes {

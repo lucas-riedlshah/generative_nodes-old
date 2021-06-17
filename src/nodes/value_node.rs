@@ -1,7 +1,7 @@
 use std::{cell::RefCell, rc::Rc};
 
 use druid::{
-    widget::{Container, CrossAxisAlignment, Flex, FlexParams, Label, Slider, Stepper},
+    widget::{Container, CrossAxisAlignment, Flex, Label, Slider, Stepper},
     Color, Widget, WidgetExt,
 };
 
