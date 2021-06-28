@@ -35,7 +35,7 @@ impl GraphWidgetNode {
     }
 }
 
-pub struct GraphWidget {
+pub struct Graph {
     nodes: Vec<GraphWidgetNode>, // TODO: Will need to replace with AllocatedVec so that the indexes match if nodes are removed.
     // maybe replace edges with their own widgets so that they can be selected and stuff.
     port_locations: HashMap<usize, (HashMap<usize, Point>, HashMap<usize, Point>)>,
@@ -45,9 +45,9 @@ pub struct GraphWidget {
     last_layout_instant: Instant,
 }
 
-impl GraphWidget {
+impl Graph {
     pub fn new() -> Self {
-        GraphWidget {
+        Graph {
             nodes: Vec::new(),
             port_locations: HashMap::new(),
             node_render_order: Vec::new(),
@@ -80,7 +80,7 @@ impl GraphWidget {
     }
 }
 
-impl Widget<Rc<RefCell<App>>> for GraphWidget {
+impl Widget<Rc<RefCell<App>>> for Graph {
     fn event(&mut self, ctx: &mut EventCtx, event: &Event, data: &mut Rc<RefCell<App>>, env: &Env) {
         for node_index in self.node_render_order.iter().rev() {
             let node = self.nodes.get_mut(*node_index).unwrap();
