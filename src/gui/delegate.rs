@@ -80,14 +80,14 @@ impl AppDelegate<Rc<RefCell<App>>> for Delegate {
         _env: &Env,
         ctx: &mut DelegateCtx,
     ) {
-        // let mut app = data.borrow_mut();
+        let mut app = data.borrow_mut();
 
-        // let value_node = app.add_node("Value");
-        // ctx.submit_command(Command::new(
-        //     ADD_NODE_WIDGET,
-        //     (value_node, *self.node_widget_factories.get("Value").unwrap()),
-        //     Target::Window(id),
-        // ));
+        let value_node = app.add_node("Value");
+        ctx.submit_command(Command::new(
+            ADD_NODE_WIDGET,
+            (value_node, *self.node_widget_factories.get("Value").unwrap()),
+            Target::Window(id),
+        ));
 
         // let vector_node = app.add_node("Vector");
         // ctx.submit_command(Command::new(
