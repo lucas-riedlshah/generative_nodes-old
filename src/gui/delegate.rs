@@ -1,13 +1,14 @@
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
-use druid::{AppDelegate, Command, DelegateCtx, Env, Handled, Selector, Target, Widget, WindowId};
+use druid::{AppDelegate, Command, DelegateCtx, Env, Handled, Point, Selector, Target, Widget, WindowId};
 
 use crate::core::App;
 
-pub const ADD_NODE: Selector<&'static str> = Selector::new("add_node");
+pub const ADD_NODE: Selector<(&'static str, Point)> = Selector::new("add_node");
 pub const ADD_EDGE: Selector<(usize, usize)> = Selector::new("begin_edge");
 pub const ADD_NODE_WIDGET: Selector<(
     usize,
+    Point,
     fn(index: usize) -> Box<dyn Widget<Rc<RefCell<App>>>>,
 )> = Selector::new("add_node_widget");
 
@@ -42,11 +43,11 @@ impl AppDelegate<Rc<RefCell<App>>> for Delegate {
         let mut app = data.borrow_mut();
 
         if command.is(ADD_NODE) {
-            let new_node_type = command.get(ADD_NODE).unwrap();
+            let (new_node_type, new_node_position) = command.get(ADD_NODE).unwrap();
             let new_node = app.add_node(*new_node_type);
             ctx.submit_command(Command::new(
                 ADD_NODE_WIDGET,
-                (new_node, *self.node_widget_factories.get(*new_node_type).unwrap()),
+                (new_node, *new_node_position, *self.node_widget_factories.get(*new_node_type).unwrap()),
                 Target::Global,
             ));
         } else if command.is(ADD_EDGE) {
@@ -80,14 +81,14 @@ impl AppDelegate<Rc<RefCell<App>>> for Delegate {
         _env: &Env,
         ctx: &mut DelegateCtx,
     ) {
-        let mut app = data.borrow_mut();
+        // let mut app = data.borrow_mut();
 
-        let value_node = app.add_node("Value");
-        ctx.submit_command(Command::new(
-            ADD_NODE_WIDGET,
-            (value_node, *self.node_widget_factories.get("Value").unwrap()),
-            Target::Window(id),
-        ));
+        // let value_node = app.add_node("Value");
+        // ctx.submit_command(Command::new(
+        //     ADD_NODE_WIDGET,
+        //     (value_node, *self.node_widget_factories.get("Value").unwrap()),
+        //     Target::Window(id),
+        // ));
 
         // let vector_node = app.add_node("Vector");
         // ctx.submit_command(Command::new(

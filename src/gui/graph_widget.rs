@@ -1,10 +1,6 @@
 use std::{cell::RefCell, collections::HashMap, ops::Add, rc::Rc, time::Instant};
 
-use druid::{
-    kurbo::QuadBez, widget::LabelText, BoxConstraints, Color, Command, Env, Event, EventCtx,
-    LayoutCtx, LifeCycle, LifeCycleCtx, LocalizedString, Menu, MenuItem, PaintCtx, Point,
-    RenderContext, Selector, Size, Target, UpdateCtx, Widget, WidgetPod,
-};
+use druid::{BoxConstraints, Code, Color, Command, Env, Event, EventCtx, KeyCode, LayoutCtx, LifeCycle, LifeCycleCtx, LocalizedString, Menu, MenuItem, PaintCtx, Point, RenderContext, Selector, Size, Target, UpdateCtx, Widget, WidgetPod, kurbo::QuadBez, widget::LabelText};
 
 use crate::core::App;
 
@@ -26,10 +22,10 @@ struct GraphWidgetNode {
 }
 
 impl GraphWidgetNode {
-    fn new<W: Widget<Rc<RefCell<App>>> + 'static>(widget: W) -> Self {
+    fn new<W: Widget<Rc<RefCell<App>>> + 'static>(widget: W, position: Point) -> Self {
         GraphWidgetNode {
             widget: WidgetPod::new(Box::new(widget)),
-            position: Point::new(5., 5.),
+            position,
             is_selected: false,
         }
     }
@@ -90,8 +86,8 @@ impl Widget<Rc<RefCell<App>>> for Graph {
         match event {
             Event::Command(command) => {
                 if command.is(ADD_NODE_WIDGET) {
-                    let (index, func) = command.get(ADD_NODE_WIDGET).unwrap();
-                    let node = GraphWidgetNode::new(func(*index));
+                    let (index, position, func) = command.get(ADD_NODE_WIDGET).unwrap();
+                    let node = GraphWidgetNode::new(func(*index), *position);
                     self.node_render_order.push(self.nodes.len());
                     self.nodes.push(node);
                     ctx.children_changed();
@@ -163,24 +159,9 @@ impl Widget<Rc<RefCell<App>>> for Graph {
                     ctx.request_layout();
                 }
                 self.is_translating_nodes = false;
-                if mouse.button.is_right() {
-                    let mut menu = Menu::new("Add Node");
-
-                    for i in ["Value", "Vector2D", "Particle", "Circle"].iter() {
-                        menu = menu.entry(MenuItem::new(i.to_string()).command(Command::new(
-                            ADD_NODE,
-                            i,
-                            Target::Global,
-                        )));
-                    }
-                    
-                    ctx.show_context_menu::<Rc<RefCell<App>>>(
-                        menu,
-                        mouse.pos,
-                    )
-                }
             }
             Event::MouseMove(mouse) => {
+                // TODO: is_translating_nodes might be able to be replace by simply checking mouse.buttons? Lol.
                 if self.is_translating_nodes {
                     let delta = mouse.pos - self.last_mouse_pos;
                     self.nodes.iter_mut().for_each(|node| {
@@ -194,6 +175,11 @@ impl Widget<Rc<RefCell<App>>> for Graph {
                     }
                 }
             }
+            // Event::KeyDown(key) => {
+            //     if let Code::Delete = key.code {
+                    
+            //     }
+            // }
             _ => (),
         }
     }
@@ -236,16 +222,17 @@ impl Widget<Rc<RefCell<App>>> for Graph {
             let node = self.nodes.get_mut(*node_index).unwrap();
             node.widget.layout(ctx, &child_box_constraints, data, env);
             node.widget.set_origin(ctx, data, env, node.position);
+            node.widget.set_viewport_offset(node.position.to_vec2());  // TODO: Don't forget about this line. It might need removal.
         }
 
         self.last_layout_instant = Instant::now();
         // TODO: Sort out how to return the right size for this widget and [Viewer2D]
-        bc.min()
+        Size::new(1000., 1000.)
     }
 
     fn paint(&mut self, ctx: &mut PaintCtx, data: &Rc<RefCell<App>>, env: &Env) {
         let clip_rect = ctx.size().to_rect();
-        ctx.fill(clip_rect, &Color::rgb8(15, 15, 15));
+        ctx.fill(clip_rect, &Color::rgb8(15, 15, 30));
 
         for edge in data.borrow().edges() {
             let start = *self

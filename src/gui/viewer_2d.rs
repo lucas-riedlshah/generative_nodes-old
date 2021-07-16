@@ -69,6 +69,8 @@ impl Widget<Rc<RefCell<App>>> for Viewer2D {
     }
 
     fn paint(&mut self, ctx: &mut druid::PaintCtx, data: &Rc<RefCell<App>>, _env: &druid::Env) {
+        let clip_rect = ctx.size().to_rect();
+        ctx.fill(clip_rect, &Color::BLACK);
         if data
             .borrow()
             .get_cache()
