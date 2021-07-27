@@ -3,16 +3,13 @@ use druid::{BoxConstraints, Command, Data, Env, Event, EventCtx, LayoutCtx, Life
 use super::delegate::ADD_NODE;
 
 pub struct GraphViewer<T, W> {
-    inner: WidgetPod<T, Scroll<T, W>>,
-    // TODO: This has_setup feels hacky. Surely there is a better way to do this.
-    has_setup: bool
+    inner: WidgetPod<T, Scroll<T, W>>
 }
 
 impl<T: Data, W: Widget<T>> GraphViewer<T, W> {
     pub fn new(inner: Scroll<T, W>) -> GraphViewer<T, W> {
         GraphViewer {
-            inner: WidgetPod::new(inner),
-            has_setup: false
+            inner: WidgetPod::new(inner)
         }
     }
 }
@@ -78,12 +75,6 @@ impl<T: Data, W: Widget<T>> Widget<T> for GraphViewer<T, W> {
     ) -> Size {
         self.inner.layout(ctx, bc, data, env);
         self.inner.set_origin(ctx, data, env, Point::ZERO);
-
-        if !self.has_setup {
-            let scroll = self.inner.widget_mut();
-            scroll.scroll_by(((scroll.child_size() - scroll.viewport_rect().size()) / 2.).to_vec2());
-            self.has_setup = true;
-        }
         
         bc.max()
     }
