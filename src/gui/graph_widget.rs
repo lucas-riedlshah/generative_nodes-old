@@ -213,7 +213,7 @@ impl Widget<Rc<RefCell<App>>> for Graph {
     fn layout(
         &mut self,
         ctx: &mut LayoutCtx,
-        bc: &BoxConstraints,
+        _bc: &BoxConstraints,
         data: &Rc<RefCell<App>>,
         env: &Env,
     ) -> Size {
@@ -222,7 +222,6 @@ impl Widget<Rc<RefCell<App>>> for Graph {
             let node = self.nodes.get_mut(*node_index).unwrap();
             node.widget.layout(ctx, &child_box_constraints, data, env);
             node.widget.set_origin(ctx, data, env, node.position);
-            node.widget.set_viewport_offset(node.position.to_vec2());  // TODO: Don't forget about this line. It might need removal.
         }
 
         self.last_layout_instant = Instant::now();
